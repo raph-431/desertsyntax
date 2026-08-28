@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>desert syntax</title>
+  <meta name="description" content="desert syntax — coming soon.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: #f6efe2;
+      background: #0b2a55 url("marfadesert.webp") center center / cover no-repeat fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle darkening so text stays legible over the clouds */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(6, 24, 52, 0.45) 0%,
+        rgba(6, 24, 52, 0.15) 45%,
+        rgba(60, 40, 10, 0.35) 100%
+      );
+      pointer-events: none;
+    }
+
+    main {
+      position: relative;
+      padding: 2rem 1.5rem;
+      animation: rise 1.2s ease-out both;
+    }
+
+    h1 {
+      font-weight: 300;
+      font-size: clamp(2.4rem, 8vw, 6.5rem);
+      letter-spacing: 0.18em;
+      text-transform: lowercase;
+      line-height: 1.1;
+      text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    h1 .cursor {
+      display: inline-block;
+      width: 0.4em;
+      height: 1em;
+      margin-left: 0.15em;
+      vertical-align: -0.1em;
+      background: currentColor;
+      animation: blink 1.1s steps(2, start) infinite;
+    }
+
+    p {
+      margin-top: 1.5rem;
+      font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    footer {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 0;
+      right: 0;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+      text-align: center;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      to { visibility: hidden; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      main, h1 .cursor { animation: none; }
+    }
+
+    /* background-attachment: fixed is janky on iOS; fall back to scroll */
+    @media (hover: none) and (pointer: coarse) {
+      body { background-attachment: scroll; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>desert syntax<span class="cursor" aria-hidden="true"></span></h1>
+    <p>coming soon</p>
+  </main>
+  <footer>&copy; 2026 desert syntax</footer>
+</body>
+</html>
