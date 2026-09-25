@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prickly pear — 3D</title>
+<style>
+  html,body{ height:100%; margin:0; background:#ecebe6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-family:ui-monospace,monospace; overflow:hidden; }
+  #wrap{ position:relative; }
+  canvas{ display:block; box-shadow:0 2px 24px rgba(0,0,0,.14); }
+  .hint{ font-size:11px; color:#8a8578; letter-spacing:.04em; margin:0; }
+  #cap{ display:none; position:absolute; left:12px; bottom:10px; font-size:11px; color:#a03030; pointer-events:none; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="wrap"><div id="cap"></div></div>
+<p class="hint">drag — move title &nbsp;·&nbsp; tap / space — new plant &nbsp;·&nbsp; T — time of day &nbsp;·&nbsp; F — font &nbsp;·&nbsp; + / − — text size &nbsp;·&nbsp; S — save</p>
+<script>
+// ---- diagnostics: surface any failure on the page itself ----
+window.onerror = function(msg, src, line){
+  const c = document.getElementById('cap');
+  c.textContent = 'ERROR: ' + msg + ' (line ' + line + ')';
+  c.style.display = 'block';
+  return false;
+};
+if(typeof THREE === 'undefined'){
+  document.getElementById('cap').textContent = 'ERROR: three.js failed to load from CDN';
+  document.getElementById('cap').style.display = 'block';
+  throw new Error('THREE missing');
+}
+
+/* ============================================================
+   Prickly pear — generative, Three.js, monochrome
+   Original stylization (banded low-poly pads, free rim
+   branching) + form & growth variation:
+     · per-plant AGE (drives gens, children, sag, lean, size)
+     · CLUMPS of 1–3 plants sharing the ground
+     · FALLEN pads lying near the plants
+     · FRUIT (tunas) as darker knobs on outer pad rims
+     · rare FLOWERS (open cups) on lucky seeds
+   ============================================================ */
+
+// ---- seeded RNG ---------------------------------------------
+let SEED;
+let rng;
+function makeRng(s){ let v=s>>>0; return ()=>{ v=(v*1664525+1013904223)>>>0; return v/4294967296; }; }
+function R(a,b){ const r=rng(); if(a===undefined) return r; if(b===undefined) return r*a; return a+r*(b-a); }
+function Ri(a,b){ return Math.floor(R(a,b+0.999)); }
+
+// ---- three setup --------------------------------------------
+const SIZE = Math.min(window.innerWidth-24, window.innerHeight-70, 760);
+const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+renderer.setSize(SIZE, SIZE);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.shadowMap.enabled = true;
+renderer.autoClear = false;   // manual clears: 3D scene, then the footer overlay
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('wrap').prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+// ---- ASCII lettering backdrop -------------------------------
+// ANSI Shadow figlet glyphs
+const SHADOW = {
+  D:["██████╗ ","██╔══██╗","██║  ██║","██║  ██║","██████╔╝","╚═════╝ "],
+  E:["███████╗","██╔════╝","█████╗  ","██╔══╝  ","███████╗","╚══════╝"],
+  S:["███████╗","██╔════╝","███████╗","╚════██║","███████║","╚══════╝"],
+  R:["██████╗ ","██╔══██╗","██████╔╝","██╔══██╗","██║  ██║","╚═╝  ╚═╝"],
+  T:["████████╗","╚══██╔══╝","   ██║   ","   ██║   ","   ██║   ","   ╚═╝   "],
+  Y:["██╗   ██╗","╚██╗ ██╔╝"," ╚████╔╝ ","  ╚██╔╝  ","   ██║   ","   ╚═╝   "],
+  N:["███╗   ██╗","████╗  ██║","██╔██╗ ██║","██║╚██╗██║","██║ ╚████║","╚═╝  ╚═══╝"],
+  A:[" █████╗ ","██╔══██╗","███████║","██╔══██║","██║  ██║","╚═╝  ╚═╝"],
+  X:["██╗  ██╗","╚██╗██╔╝"," ╚███╔╝ "," ██╔██╗ ","██╔╝ ██╗","╚═╝  ╚═╝"],
+};
+// 5×5 pixel font, rendered with a repeated character (banner style)
+const PIX = {
+  D:["1111 ","1   1","1   1","1   1","1111 "],
+  E:["11111","1    ","1111 ","1    ","11111"],
+  S:[" 1111","1    "," 111 ","    1","1111 "],
+  R:["1111 ","1   1","1111 ","1  1 ","1   1"],
+  T:["11111","  1  ","  1  ","  1  ","  1  "],
+  Y:["1   1"," 1 1 ","  1  ","  1  ","  1  "],
+  N:["1   1","11  1","1 1 1","1  11","1   1"],
+  A:[" 111 ","1   1","11111","1   1","1   1"],
+  X:["1   1"," 1 1 ","  1  "," 1 1 ","1   1"],
+};
+const WORDS = ['DESERT', 'SYNTAX'];
+const SUBTITLE = 'A COLLABORATIVE WRITING EXPERIENCE IN THE AGE OF AI';
+const FOOTER   = 'THE ARTIST FAIR - SATURDAY OCT 24th from 11 am to 3pm';
+
+function shadowLines(word){
+  const out = Array(6).fill('');
+  for(const ch of word) SHADOW[ch].forEach((row,i) => { out[i] += row; });
+  return out;
+}
+function pixLines(word, glyph){
+  const out = Array(5).fill('');
+  for(const ch of word){
+    PIX[ch].forEach((row,i) => {
+      for(const px of row) out[i] += px === '1' ? glyph+glyph : '  ';
+      out[i] += '  ';
+    });
+  }
+  return out;
+}
+
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = bgCanvas.height = 2048;
+const bgCtx = bgCanvas.getContext('2d');
+const bgTex = new THREE.CanvasTexture(bgCanvas);
+scene.background = bgTex;
+
+// footer lines sit at the bottom edge, over the ground, so they need an
+// overlay pass; the DESERT SYNTAX title stays on the backdrop behind the plant
+const ovCanvas = document.createElement('canvas');
+ovCanvas.width = ovCanvas.height = 2048;
+const ovCtx = ovCanvas.getContext('2d');
+const ovTex = new THREE.CanvasTexture(ovCanvas);
+const overlayScene = new THREE.Scene();
+const overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+overlayScene.add(new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.MeshBasicMaterial({ map:ovTex, transparent:true, depthTest:false, depthWrite:false })
+));
+
+let letterStyle = { kind:'shadow', glyph:'#' };
+let textScale = 1;   // +/- keys; persists across seeds
+let textOff = { x:0, y:0 };   // title-block drag offset, fraction of frame; reset per seed
+const FONT_STYLES = [
+  { kind:'shadow', glyph:'' },
+  { kind:'solid',  glyph:'' },
+  { kind:'pixel',  glyph:'#' },
+  { kind:'pixel',  glyph:'@' },
+  { kind:'pixel',  glyph:'▓' },
+  { kind:'pixel',  glyph:'▒' },
+  { kind:'pixel',  glyph:'█' },
+];
+
+// plant silhouette in normalized screen coords (0..1, y down), set per seed
+let plantBox = { top:new Array(64).fill(Infinity), horizon:0.6 };
+let titleLayout = 'stack';
+
+function trimEndAll(lines){ return lines.map(l => l.replace(/\s+$/, '')); }
+const unshadow = lines => lines.slice(0,5).map(l => l.replace(/[╗╔╝╚═║]/g, ' '));
+function wordLines(word){
+  if(letterStyle.kind === 'shadow') return shadowLines(word);
+  if(letterStyle.kind === 'solid')  return unshadow(shadowLines(word));
+  return trimEndAll(pixLines(word, letterStyle.glyph));
+}
+function letterLines(ch){
+  if(letterStyle.kind === 'shadow') return SHADOW[ch];
+  if(letterStyle.kind === 'solid')  return unshadow(SHADOW[ch]);
+  return trimEndAll(pixLines(ch, letterStyle.glyph));
+}
+function widthOf(lines){ return Math.max(...lines.map(l => [...l].length)); }
+function centerPad(lines, w){
+  const pad = ' '.repeat(Math.max(0, Math.floor((w - widthOf(lines))/2)));
+  return lines.map(l => pad + l);
+}
+// DESERT / SYNTAX on two lines
+function stackBlock(){
+  const a = wordLines(WORDS[0]), b = wordLines(WORDS[1]);
+  const w = Math.max(widthOf(a), widthOf(b));
+  return [...centerPad(a,w), '', ...centerPad(b,w)];
+}
+// DESERT SYNTAX on one line
+function rowBlock(){
+  const a = wordLines(WORDS[0]), b = wordLines(WORDS[1]);
+  const wa = widthOf(a), gap = letterStyle.kind === 'shadow' ? '   ' : '    ';
+  return a.map((l,i) => l + ' '.repeat(wa - [...l].length) + gap + b[i]);
+}
+// one word, letters stacked vertically
+function columnBlock(word){
+  const blocks = [...word].map(letterLines);
+  const w = Math.max(...blocks.map(widthOf));
+  const out = [];
+  blocks.forEach((bl,i) => { if(i && letterStyle.kind !== 'shadow') out.push(''); out.push(...centerPad(bl,w)); });
+  return out;
+}
+
+function drawBackdrop(bgHex, gndHex){
+  const W = bgCanvas.width, H = bgCanvas.height;
+  const g = bgHex & 0xff;
+  const ink = g > 128 ? g - 70 : g + 80;       // readable, still neutral gray
+  bgCtx.fillStyle = '#' + bgHex.toString(16).padStart(6,'0');
+  bgCtx.fillRect(0, 0, W, H);
+
+  const family = 'Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  bgCtx.font = `100px ${family}`;
+  const cw = bgCtx.measureText('█').width / 100;       // char width per px of font size
+  const lineK = letterStyle.kind === 'shadow' ? 1.12 : 1.15;
+  const fit = (lines, w, h) => (w <= 0 || h <= 0) ? 0
+    : Math.min(w / (widthOf(lines)*cw), h / (lines.length*lineK));
+
+  // ---- adaptive layout: find clear sky windows above the plant skyline ----
+  const N = SKY_N, colW = W/N;
+  const skyTop = H*0.04, gapY = H*0.03;
+  const skyBot = plantBox.horizon*H - H*0.015;             // background is hidden below this
+  const mCol = Math.ceil(N*0.05);                          // side margins, in columns
+  const gCol = 2;                                          // horizontal gap to the plant, in columns
+  // clear height available over columns [i..j] (plus a gap each side)
+  const clearH = (i, j) => {
+    let t = skyBot;
+    for(let c=Math.max(0,i-gCol); c<=Math.min(N-1,j+gCol); c++) t = Math.min(t, plantBox.top[c]*H - gapY);
+    return t - skyTop;
+  };
+  const dims = lines => ({ cols: widthOf(lines), rows: lines.length, lines });
+  const fitD = (d, w, h) => (w <= 0 || h <= 0) ? 0 : Math.min(w/(d.cols*cw), h/(d.rows*lineK));
+  // every window, for one block: [{i,j,fs,h}]
+  const subReserve = H*0.05;                              // space kept for the subtitle line
+  const windows = d => {
+    const out = [];
+    for(let i=mCol; i<N-mCol; i++) for(let j=i; j<N-mCol; j++){
+      const h = clearH(i,j), fs = fitD(d, (j-i+1)*colW, h - subReserve);
+      if(fs > 0) out.push({ i, j, h, fs });
+    }
+    return out;
+  };
+  const fsCap = fitD(dims(stackBlock()), W*0.88, H*0.53);  // never bigger than the full-width title
+
+  const cands = [];
+  // option 1: whole title in one clear window (two-line stack or single row)
+  for(const [name, d] of [['above', dims(stackBlock())], ['above-row', dims(rowBlock())]]){
+    let b = null; for(const w of windows(d)) if(!b || w.fs > b.fs) b = w;
+    if(b) cands.push({ name, bias:1.08, fs:Math.min(b.fs, fsCap), place:[[d, b]] });
+  }
+  // option 2: DESERT in a window left of SYNTAX's window (words as rows, or letter columns)
+  for(const [name, dA, dB] of [
+    ['split',     dims(wordLines(WORDS[0])),   dims(wordLines(WORDS[1]))],
+  ]){
+    const wa = windows(dA), wb = windows(dB);
+    const bestEnd = new Array(N).fill(null), bestStart = new Array(N+1).fill(null);
+    for(const w of wa) if(!bestEnd[w.j] || w.fs > bestEnd[w.j].fs) bestEnd[w.j] = w;
+    for(let k=1; k<N; k++) if(bestEnd[k-1] && (!bestEnd[k] || bestEnd[k-1].fs > bestEnd[k].fs)) bestEnd[k] = bestEnd[k-1];
+    for(const w of wb) if(!bestStart[w.i] || w.fs > bestStart[w.i].fs) bestStart[w.i] = w;
+    for(let k=N-2; k>=0; k--) if(bestStart[k+1] && (!bestStart[k] || bestStart[k+1].fs > bestStart[k].fs)) bestStart[k] = bestStart[k+1];
+    let b = null;
+    for(let k=0; k<N-1; k++){
+      const A = bestEnd[k], B = bestStart[k+1];
+      if(!A || !B) continue;
+      const fs = Math.min(A.fs, B.fs);
+      if(!b || fs > b.fs) b = { fs, A, B };
+    }
+    if(b) cands.push({ name, bias:1.0, fs:Math.min(b.fs, fsCap), place:[[dA, b.A], [dB, b.B]], shareH:true });
+  }
+
+  let best = cands.reduce((a,c) => (!a || c.fs*c.bias > a.fs*a.bias) ? c : a, null);
+  // nothing usable: fall back to the full title behind the plant
+  if(!best || best.fs < fsCap*0.28){
+    const d = dims(stackBlock());
+    best = { name:'behind', fs:fsCap, place:[[d, { i:0, j:N-1, h:H*0.53 }]] };
+  }
+  titleLayout = best.name;
+  const fs = best.fs * textScale, lh = fs*lineK;
+  const commonH = best.shareH ? Math.min(...best.place.map(([,w]) => w.h)) : null;
+
+  bgCtx.font = `${fs}px ${family}`;
+  bgCtx.textBaseline = 'top';
+  bgCtx.fillStyle = `rgb(${ink},${ink},${ink})`;
+  const subN = [...SUBTITLE].length;
+  const subGap = Math.max(lh*0.45, H*0.014);
+  best.place.forEach(([d, w], bi) => {
+    const bw = d.cols*cw*fs, bh = d.rows*lh;
+    const x = w.i*colW + ((w.j-w.i+1)*colW - bw)/2 + textOff.x*W;
+    // subtitle goes under the (first / left) block, tracked to that block's width
+    const withSub = bi === 0;
+    const sfs = Math.max(H*0.011, Math.min(bw / (subN*cw*1.45), H*0.021));
+    const groupH = bh + (withSub ? subGap + sfs : 0);
+    const y = skyTop + ((commonH ?? w.h) - groupH)/2 + (best.name === 'behind' ? H*0.01 : 0) + textOff.y*H;
+    bgCtx.font = `${fs}px ${family}`;
+    bgCtx.fillStyle = `rgb(${ink},${ink},${ink})`;
+    d.lines.forEach((l,i) => bgCtx.fillText(l, x, y + i*lh));
+    if(withSub){
+      const sInk = g > 128 ? g - 80 : g + 90;
+      const sw = Math.max(bw, subN*cw*sfs*1.1);          // never squeeze letters together
+      const sx = x + (bw - sw)/2;
+      const step = (sw - cw*sfs) / (subN-1);
+      bgCtx.font = `${sfs}px ${family}`;
+      bgCtx.fillStyle = `rgb(${sInk},${sInk},${sInk})`;
+      [...SUBTITLE].forEach((c,i) => bgCtx.fillText(c, sx + i*step, y + bh + subGap));
+    }
+  });
+  bgTex.needsUpdate = true;
+
+  // footer is drawn after the next 3D render, once we know how bright the ground under it is
+  footerDirty = true;
+}
+
+// ---- footer: event line, legible on any ground -------------
+let footerDirty = true;
+const FOOTER_BAND = { x0:0.10, x1:0.90, y0:0.925, y1:0.975 };   // where the footer sits (0..1, y down)
+
+// mean luminance (0..255) of the rendered frame under the footer band
+function measureFooterBand(){
+  try { return measureFooterBandRaw(); } catch(e) { return 200; }   // if pixels can't be read, assume light ground
+}
+function measureFooterBandRaw(){
+  const gl = renderer.getContext();
+  const cw = gl.drawingBufferWidth, ch = gl.drawingBufferHeight;
+  const x = Math.floor(FOOTER_BAND.x0*cw), w = Math.max(1, Math.floor((FOOTER_BAND.x1-FOOTER_BAND.x0)*cw));
+  const y = Math.floor((1-FOOTER_BAND.y1)*ch), h = Math.max(1, Math.floor((FOOTER_BAND.y1-FOOTER_BAND.y0)*ch));
+  const px = new Uint8Array(w*h*4);
+  gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  let sum = 0, n = 0;
+  for(let i=0; i<px.length; i+=4*7){ sum += 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]; n++; }
+  return n ? sum/n : 200;
+}
+
+function drawFooter(lum){
+  const W = ovCanvas.width, H = ovCanvas.height;
+  const family = 'Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  const dark = lum < 135;                          // dark ground → light text, and vice versa
+  const inkV  = dark ? 232 : 38;
+  const haloV = dark ? 20  : 245;
+  ovCtx.clearRect(0, 0, W, H);
+  ovCtx.font = `100px ${family}`;
+  const cw = ovCtx.measureText('█').width / 100;
+  const fw = W*0.80, fx = (W - fw)/2;              // footer ignores +/- sizing
+  const n = [...FOOTER].length;
+  const sfs = Math.min(fw / (n*cw*1.45), H*0.021);
+  const step = (fw - cw*sfs) / (n-1);
+  const y = H*(FOOTER_BAND.y0 + FOOTER_BAND.y1)/2 - sfs/2;
+  ovCtx.font = `${sfs}px ${family}`;
+  ovCtx.textBaseline = 'top';
+  // soft halo in the opposite tone keeps it legible where it crosses pads or shadows
+  ovCtx.shadowColor = `rgba(${haloV},${haloV},${haloV},0.85)`;
+  ovCtx.shadowBlur = sfs*0.6;
+  ovCtx.fillStyle = `rgb(${inkV},${inkV},${inkV})`;
+  [...FOOTER].forEach((c,i) => ovCtx.fillText(c, fx + i*step, y));
+  ovCtx.shadowBlur = 0; ovCtx.shadowColor = 'transparent';
+  ovTex.needsUpdate = true;
+}
+
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+camera.position.set(0, 2.4, 7.2);
+camera.lookAt(0, 1.5, 0);
+
+// lights — grayscale modelling only
+const hemi = new THREE.HemisphereLight(0xffffff, 0xd8d8d4, 0.85);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+sun.position.set(3.2, 6.5, 4.0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -7; sun.shadow.camera.right = 7;
+sun.shadow.camera.top = 7; sun.shadow.camera.bottom = -7;
+sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 40;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.02;
+sun.target.position.set(0, 1, 0);
+scene.add(sun, sun.target);
+
+// ground disc
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(6, 48),
+  new THREE.MeshStandardMaterial({ color:0xe4e2dc, roughness:1 })
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// pivot for the whole scene contents (drag-rotate target)
+const pivot = new THREE.Group();
+scene.add(pivot);
+
+// ---- time of day (grayscale only) ---------------------------
+// el = sun elevation°, az = azimuth° (0 = from camera side, +90 = from the right,
+// 180 = from behind the plant). bg/gnd/hemiGnd are neutral grays.
+const TIMES = [
+  { name:'dawn',      w:0.12, el:  7, az: -80, sun:0.55, hemi:0.50, bg:0xe3e3e3, gnd:0xd9d9d8, hemiGnd:0xbdbdbd },
+  { name:'morning',   w:0.18, el: 28, az: -45, sun:0.62, hemi:0.78, bg:0xf1f0ec, gnd:0xe4e2dc, hemiGnd:0xd8d8d4 },
+  { name:'noon',      w:0.14, el: 78, az:  15, sun:0.70, hemi:0.80, bg:0xf6f6f4, gnd:0xe9e8e4, hemiGnd:0xdcdcd8 },
+  { name:'afternoon', w:0.20, el: 50, az:  38, sun:0.60, hemi:0.85, bg:0xf1f0ec, gnd:0xe4e2dc, hemiGnd:0xd8d8d4 },
+  { name:'dusk',      w:0.16, el:  9, az: 150, sun:0.75, hemi:0.42, bg:0xd9d9d8, gnd:0xcfcfcd, hemiGnd:0xa9a9a7 },
+  { name:'overcast',  w:0.10, el: 60, az:  20, sun:0.10, hemi:1.05, bg:0xe8e8e7, gnd:0xdcdcda, hemiGnd:0xd0d0ce },
+  { name:'night',     w:0.10, el: 38, az: -30, sun:0.42, hemi:0.16, bg:0x2c2c2d, gnd:0x3a3a3a, hemiGnd:0x1e1e1e },
+];
+let timeIdx = 3;
+
+function applyTime(t){
+  const el = t.el*Math.PI/180, az = t.az*Math.PI/180, d = 14;
+  sun.position.set(Math.sin(az)*Math.cos(el)*d, Math.sin(el)*d + 1, Math.cos(az)*Math.cos(el)*d);
+  sun.intensity  = t.sun;
+  hemi.intensity = t.hemi;
+  hemi.groundColor.setHex(t.hemiGnd);
+  drawBackdrop(t.bg, t.gnd);
+  ground.material.color.setHex(t.gnd);
+}
+
+function pickTime(){
+  let tot = 0; for(const t of TIMES) tot += t.w;
+  let r = R()*tot;
+  for(let i=0; i<TIMES.length; i++){ if(r < TIMES[i].w) return i; r -= TIMES[i].w; }
+  return 0;
+}
+
+// ---- materials (shared, monochrome) -------------------------
+let padMat, spineMat, fruitMat, flowerMat, stamenMat;
+let fruitGeo;  // lathe profile: barrel with a concave dimple at the top
+let dotGeo, dotMat;
+const FRUIT_SEG = 7;
+// [radius, height] — tapered base → barrel → shoulder → rim → concave dimple
+const FRUIT_PROFILE = [
+  [0.06,0.00],[0.30,0.04],[0.44,0.18],[0.50,0.45],[0.46,0.70],
+  [0.36,0.88],[0.26,0.96],[0.15,0.89],[0.06,0.84],
+];
+// outer-wall radius at height h (only the rising part of the profile, up to the dimple rim)
+function fruitRadiusAt(h){
+  for(let i=1; i<=6; i++){
+    const [r0,h0] = FRUIT_PROFILE[i-1], [r1,h1] = FRUIT_PROFILE[i];
+    if(h <= h1){ const t = (h-h0)/(h1-h0); return r0 + (r1-r0)*t; }
+  }
+  return FRUIT_PROFILE[6][0];
+}
+
+// ---- parameters ---------------------------------------------
+let P;
+function genParams(){
+  P = {
+    // stylization — unchanged from the original
+    scaleDecay: R(0.60, 0.74),
+    padRy:      R(1.10, 1.45),
+    padRz:      R(0.10, 0.18),
+    seg:        Ri(7, 11),
+    tiltK:      R(0.5, 0.95),
+    yawMax:     R(0.3, 0.9),
+    gravity:    R(0.04, 0.16),
+    photo:      R(0.10, 0.30),
+    childBase:  Ri(2, 4),
+    spineGrid:  Ri(3, 5),
+    spineLen:   R(0.10, 0.20),
+    spinesPer:  Ri(3, 6),
+    padShade:   R(0.93, 1.0),
+
+    // form & growth
+    nPlants:    (r => r<0.55 ? 1 : r<0.85 ? 2 : 3)(R()),
+    nFallen:    (R() < 0.45 ? Ri(1,2) : 0),
+    fruitProb:  R(0.20, 0.65),   // per-pad chance on eligible pads
+    fruitOn:    R() < 0.68,      // seed-level gate — not every plant fruits
+    flowerProb: R(0, 1) < 0.22 ? 1 : 0,  // lucky seeds get flowers
+  };
+}
+
+// areole dots on a fruit: staggered rows, sitting exactly on the faceted wall.
+// Even rows sit on the lathe's vertex ridges, odd rows at facet centres
+// (where the flat face is closer to the axis by cos(π/seg)).
+function addFruitDots(fg, fs){
+  const rows = 5, hy = fs*1.5, ds = fs*0.038;
+  const facet = Math.cos(Math.PI/FRUIT_SEG);
+  for(let r=0; r<rows; r++){
+    const h = 0.14 + r*(0.80-0.14)/(rows-1) + R(-0.02,0.02);
+    const off = r % 2 ? 0.5 : 0;
+    const rad = fruitRadiusAt(h) * fs * (off ? facet : 1);
+    for(let k=0; k<FRUIT_SEG; k++){
+      if(R() < 0.12) continue;
+      const a = (k + off) * Math.PI*2/FRUIT_SEG;
+      const d = new THREE.Mesh(dotGeo, dotMat);
+      d.scale.set(ds, ds, ds*0.6);
+      d.position.set(Math.sin(a)*rad, h*hy, Math.cos(a)*rad);
+      d.lookAt(Math.sin(a)*rad*2, h*hy, Math.cos(a)*rad*2);   // flatten against the wall
+      fg.add(d);
+    }
+  }
+  // ring of dots around the dimple rim, as in the photo
+  const rimR = FRUIT_PROFILE[6][0]*fs*0.95, rimH = FRUIT_PROFILE[6][1]*hy;
+  for(let k=0; k<FRUIT_SEG; k++){
+    const a = (k+0.5) * Math.PI*2/FRUIT_SEG;
+    const d = new THREE.Mesh(dotGeo, dotMat);
+    d.scale.setScalar(ds*0.8);
+    d.position.set(Math.sin(a)*rimR, rimH, Math.cos(a)*rimR);
+    fg.add(d);
+  }
+}
+
+// rotation.z that aligns local +Y with the pad rim's outward normal at phi
+function rimNormalRot(phi, rx, ry){
+  const theta = Math.atan2(Math.sin(phi)/ry, Math.cos(phi)/rx);
+  return theta - Math.PI/2;
+}
+
+// ---- pad construction ---------------------------------------
+let padCount, fruitCount, flowerCount;
+const MAX_PADS = 44;
+
+function buildPad(gen, s, PL){
+  if(padCount >= MAX_PADS) return null;
+  padCount++;
+
+  const group = new THREE.Group();
+  const rx = 0.5*s, ry = 0.5*s*P.padRy, rz = 0.5*s*P.padRz;
+
+  // low-poly flattened ellipsoid; base sits at group origin
+  const geo = new THREE.SphereGeometry(1, P.seg, Math.max(5, P.seg-2));
+  const mesh = new THREE.Mesh(geo, padMat);
+  mesh.scale.set(rx, ry, rz);
+  mesh.position.y = ry;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+
+  // spines: areole grid on both faces
+  const pts = [];
+  const n = P.spineGrid;
+  for(let face = -1; face <= 1; face += 2){
+    for(let r=0; r<n; r++) for(let c=0; c<n; c++){
+      const u = (n>1 ? c/(n-1)*2-1 : 0)*0.72;
+      const v = (n>1 ? r/(n-1)*2-1 : 0)*0.75;
+      if(u*u + v*v > 0.85) continue;
+      const ax = u*rx, ay = ry + v*ry, az = face*rz*1.02;
+      for(let k=0; k<P.spinesPer; k++){
+        const a = R(0, Math.PI*2);
+        const l = rx*P.spineLen*(0.5 + R(0.8));
+        pts.push(ax, ay, az);
+        pts.push(ax + Math.cos(a)*l, ay + Math.sin(a)*l, az + face*l*0.7);
+      }
+    }
+  }
+  if(pts.length){
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    group.add(new THREE.LineSegments(lg, spineMat));
+  }
+
+  // children sprout from the upper rim (original free placement)
+  const childPhis = [];
+  if(gen < PL.maxGen){
+    const nCh = Math.max(0, PL.childBase - gen - Ri(0, 1));
+    for(let i=0; i<nCh; i++){
+      const phi = R(0.35, Math.PI-0.35);
+      childPhis.push(phi);
+      const px  = Math.cos(phi)*rx*0.92;
+      const py  = ry + Math.sin(phi)*ry*0.92;
+      const pz  = R(-rz*0.3, rz*0.3);
+
+      const child = buildPad(gen+1, s*P.scaleDecay, PL);
+      if(!child) break;
+
+      child.position.set(px, py, pz);
+
+      const outward = (phi - Math.PI/2) * -P.tiltK;
+      let tilt = outward + R(-0.15, 0.15);
+      tilt += Math.sign(tilt || R(-1,1)) * PL.gravity * (gen+1);
+      tilt -= tilt * P.photo;
+      child.rotation.z = tilt;
+      child.rotation.y = R(-P.yawMax, P.yawMax);
+      group.add(child);
+    }
+  }
+
+  // helper: find a rim spot away from children
+  function freePhi(){
+    for(let t=0; t<7; t++){
+      const phi = R(0.45, Math.PI-0.45);
+      if(childPhis.every(cp => Math.abs(cp-phi) > 0.34)) return phi;
+    }
+    return null;
+  }
+
+  // fruit (tunas): a packed row along the top rim of TERMINAL pads —
+  // the childless outer pads, which is where real Opuntia fruits sit
+  if(PL.fruit && PL.fruitPadsLeft > 0 && gen >= 1 && childPhis.length === 0 && R() < Math.min(0.95, P.fruitProb*1.7)){
+    PL.fruitPadsLeft--;
+    const frS  = s * R(0.15, 0.20);                       // nominal fruit width
+    const rBar = (rx + ry) / 2;
+    const dPhi = Math.max(0.12, Math.min(0.26, 1.15*frS/rBar));
+    const nF   = (r => r<0.10 ? 1 : r<0.30 ? 2 : r<0.70 ? 3 : r<0.90 ? 4 : 5)(R());   // avg = 3
+    const cPhi = Math.PI/2 + R(-0.3, 0.3);
+    for(let i=0; i<nF; i++){
+      const phi = cPhi + (i-(nF-1)/2)*dPhi + R(-0.02, 0.02);
+      if(phi < 0.35 || phi > Math.PI-0.35) continue;
+      const fs = frS * R(0.85, 1.1);
+      const fg = new THREE.Group();
+      const fm = new THREE.Mesh(fruitGeo, fruitMat);
+      fm.scale.set(fs, fs*1.5, fs);
+      fm.castShadow = true;
+      fg.add(fm);
+      addFruitDots(fg, fs);
+      // sit on the rim, base sunk slightly into the pad, axis along the rim normal
+      const rot = rimNormalRot(phi, rx, ry);
+      const sink = fs*0.12;
+      fg.position.set(
+        Math.cos(phi)*rx + Math.sin(rot)*sink,
+        ry + Math.sin(phi)*ry - Math.cos(rot)*sink,
+        R(-rz*0.15, rz*0.15));
+      fg.rotation.order = 'ZXY';   // X applied in the fruit's own frame: tilts out of the pad plane
+      fg.rotation.z = rot + R(-0.06, 0.06);
+      const side = (i % 2 ? 1 : -1) * (R() < 0.75 ? 1 : -1);   // mostly alternating faces
+      fg.rotation.x = side * R(0.22, 0.55);
+      group.add(fg);
+      childPhis.push(phi);
+      fruitCount++;
+    }
+  }
+
+  // flowers: rare open cups, at most a couple per plant
+  if(PL.flowersLeft > 0 && gen >= 1 && R() < 0.30){
+    const phi = freePhi();
+    if(phi !== null){
+      const fls = s * R(0.30, 0.40);
+      const cupR = 0.5*fls*0.62, cupH = 0.5*fls*0.55;
+      const fg = new THREE.Group();
+      const cup = new THREE.Mesh(
+        new THREE.CylinderGeometry(cupR, cupR*0.28, cupH, 7, 1, true), flowerMat);
+      cup.position.y = cupH*0.6;
+      cup.castShadow = true;
+      fg.add(cup);
+      const st = new THREE.Mesh(new THREE.SphereGeometry(cupR*0.30, 6, 5), stamenMat);
+      st.position.y = cupH*0.75;
+      fg.add(st);
+      fg.position.set(Math.cos(phi)*rx*0.95, ry + Math.sin(phi)*ry*0.95, R(-rz*0.2, rz*0.2));
+      fg.rotation.z = rimNormalRot(phi, rx, ry) + R(-0.08, 0.08);
+      group.add(fg);
+      childPhis.push(phi);
+      PL.flowersLeft--;
+      flowerCount++;
+    }
+  }
+
+  return group;
+}
+
+// ---- one plant, driven by an age value ----------------------
+function buildPlant(age){
+  const PL = {
+    maxGen:      2 + Math.round(age*2),                       // 2..4
+    childBase:   Math.max(1, Math.round(P.childBase*(0.45 + age*0.75))),
+    gravity:     P.gravity * (0.55 + age*1.25),               // old plants sag
+    fruit:       P.fruitOn && age > 0.45,
+    fruitPadsLeft: Ri(1, 3),   // only a few pads carry fruit, as in life
+    flowersLeft: (P.flowerProb && age > 0.5) ? Ri(1,2) : 0,
+  };
+  const s0 = (0.72 + age*0.62) * R(0.95, 1.05);
+  const plant = buildPad(0, s0, PL);
+  if(plant){
+    plant.rotation.y = R(0, Math.PI*2);
+    plant.rotation.z = R(-0.09, 0.09) * (0.4 + age);          // whole-plant lean
+    // sink the root pad into the ground (4–7% of its height, more for older plants)
+    // so the plant is planted rather than balanced on a point. No RNG used,
+    // so every existing seed keeps the same shape, time and font.
+    const padH = s0 * P.padRy;                                   // root pad height (2·ry)
+    plant.position.y = -(0.04 + 0.03*age) * padH;
+  }
+  return plant;
+}
+
+// ---- a single detached pad lying on the ground --------------
+function buildFallen(){
+  const s = R(0.38, 0.62);
+  const PL = { maxGen:0, childBase:0, gravity:0, fruit:false, flowersLeft:0 };
+  const pad = buildPad(0, s, PL);
+  if(!pad) return null;
+  pad.rotation.x = -Math.PI/2 + R(-0.16, 0.16);
+  pad.rotation.z = R(0, Math.PI*2);
+  pad.position.y = 0.5*s*P.padRz * 1.25;
+  return pad;
+}
+
+// ---- screen-space skyline of the standing plants -------------
+// top[c] = highest point (normalized y, 0 = top of frame) of any plant in column c
+const SKY_N = 64;
+const _v = new THREE.Vector3();
+function measurePlants(){
+  pivot.updateMatrixWorld(true);
+  camera.updateMatrixWorld(true);
+  const top = new Array(SKY_N).fill(Infinity);
+  for(const pl of content.children){
+    if(!pl.userData.isPlant) continue;
+    pl.traverse(o => {
+      if(!o.isMesh || !o.geometry || !o.geometry.attributes || o.geometry === dotGeo) return;
+      const pos = o.geometry.attributes.position;
+      for(let i=0; i<pos.count; i++){
+        _v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).project(camera);
+        const sx = (_v.x+1)/2, sy = (1-_v.y)/2;
+        const c = Math.floor(sx*SKY_N);
+        if(c >= 0 && c < SKY_N && sy < top[c]) top[c] = sy;
+      }
+    });
+  }
+  // dilate one column each way and lift slightly: spines stick out past the meshes
+  const dil = top.map((t,c) => Math.min(t, top[c-1] ?? Infinity, top[c+1] ?? Infinity) - 0.012);
+  _v.set(0, 0, -6).project(camera);                // far edge of the ground disc
+  return { top: dil, horizon: (1-_v.y)/2 };
+}
+
+// ---- rebuild ------------------------------------------------
+let content;
+let mainPadAngle = 0;
+function rebuild(){
+  rng = makeRng(SEED);
+  genParams();
+
+  if(content){ pivot.remove(content); disposeDeep(content); }
+  pivot.rotation.set(0, 0, 0);   // each seed starts from the chosen viewpoint
+  textOff = { x:0, y:0 };
+  content = new THREE.Group();
+
+  const g = Math.round(255*P.padShade);
+  padMat    = new THREE.MeshStandardMaterial({ color:(g<<16)|(g<<8)|g, roughness:0.9, flatShading:true });
+  spineMat  = new THREE.LineBasicMaterial({ color:0x1c1c1a });
+  const f   = Math.round(g*0.62);
+  fruitMat  = new THREE.MeshStandardMaterial({ color:(f<<16)|(f<<8)|f, roughness:0.85, flatShading:true });
+  flowerMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.7, flatShading:true, side:THREE.DoubleSide });
+  stamenMat = new THREE.MeshStandardMaterial({ color:0x4a4a46, roughness:0.9 });
+
+  fruitGeo = new THREE.LatheGeometry(
+    FRUIT_PROFILE.map(([r,h]) => new THREE.Vector2(r,h)), FRUIT_SEG);
+  dotGeo = new THREE.SphereGeometry(1, 5, 4);
+  dotMat = new THREE.MeshStandardMaterial({ color:0x2a2a27, roughness:1 });
+
+  padCount = 0; fruitCount = 0; flowerCount = 0;
+
+  // clump layout: main plant + smaller companions
+  const slots = P.nPlants === 1 ? [0]
+              : P.nPlants === 2 ? [-1.05, 1.0]
+              : [-1.55, 0.05, 1.5];
+  // shuffle slot order so the big one isn't always centered
+  for(let i=slots.length-1; i>0; i--){ const j=Ri(0,i); [slots[i],slots[j]]=[slots[j],slots[i]]; }
+
+  for(let i=0; i<P.nPlants; i++){
+    const age = i === 0 ? R(0.6, 1.0) : R(0.12, 0.62);
+    const plant = buildPlant(age);
+    if(!plant) break;
+    plant.position.x = slots[i] + R(-0.15, 0.15);
+    plant.position.z = R(-0.45, 0.55);
+    if(i === 0){
+      // face the main plant's root pad toward the camera, within ±30°.
+      // Pad face normal is local +Z; rotation.y = θ sends it to (sin θ, 0, cos θ).
+      const toCam = Math.atan2(camera.position.x - plant.position.x,
+                               camera.position.z - plant.position.z);
+      const flip  = R() < 0.5 ? 0 : Math.PI;           // either face may show
+      mainPadAngle = R(-Math.PI/6, Math.PI/6);
+      plant.rotation.y = toCam + flip + mainPadAngle;
+    }
+    plant.userData.isPlant = true;
+    content.add(plant);
+  }
+
+  for(let i=0; i<P.nFallen; i++){
+    const pad = buildFallen();
+    if(!pad) break;
+    pad.position.x = R(-2.3, 2.3);
+    pad.position.z = R(-0.4, 1.7);
+    content.add(pad);
+  }
+
+  pivot.add(content);
+
+  timeIdx = pickTime();
+  const fr = R();
+  letterStyle = fr < 0.40 ? { kind:'shadow', glyph:'' }
+              : fr < 0.65 ? { kind:'solid',  glyph:'' }
+              :             { kind:'pixel',  glyph:['#','@','▓','▒','█'][Ri(0,4)] };
+  plantBox = measurePlants();
+  applyTime(TIMES[timeIdx]);
+
+  const bits = [`#${SEED}`, `${P.nPlants} plant${P.nPlants>1?'s':''}`, `${padCount} pads`];
+  if(fruitCount)  bits.push(`${fruitCount} fruit`);
+  if(flowerCount) bits.push(`${flowerCount} flower${flowerCount>1?'s':''}`);
+  bits.push(`seg ${P.seg}`);
+  bits.push(TIMES[timeIdx].name);
+  document.getElementById('cap').textContent = bits.join(' · ');
+}
+
+function disposeDeep(o){
+  o.traverse(c => {
+    if(c.geometry) c.geometry.dispose();
+  });
+}
+
+// ---- interaction --------------------------------------------
+let dragging=false, moved=false, px0=0, py0=0, vy=0, off0=null, redrawQueued=false;
+renderer.domElement.style.cursor = 'grab';
+renderer.domElement.addEventListener('pointerdown', e => {
+  dragging=true; moved=false; px0=e.clientX; py0=e.clientY; off0={ ...textOff };
+  renderer.domElement.setPointerCapture(e.pointerId);
+  renderer.domElement.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  if(!moved && Math.hypot(e.clientX-px0, e.clientY-py0) < 4) return;   // small jitter = still a tap
+  moved = true;
+  const r = renderer.domElement.getBoundingClientRect();
+  textOff.x = Math.max(-0.6, Math.min(0.6, off0.x + (e.clientX-px0)/r.width));
+  textOff.y = Math.max(-0.6, Math.min(0.6, off0.y + (e.clientY-py0)/r.height));
+  if(!redrawQueued){                                // one redraw per frame
+    redrawQueued = true;
+    requestAnimationFrame(() => { redrawQueued = false; applyTime(TIMES[timeIdx]); });
+  }
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  dragging=false;
+  renderer.domElement.style.cursor = 'grab';
+  if(!moved) newSeed(); else syncHash();
+  moved=false;
+});
+window.addEventListener('keydown', e => {
+  if(e.key===' '){ e.preventDefault(); newSeed(); }
+  if(e.key==='+' || e.key==='=' || e.key==='-' || e.key==='_'){
+    const up = e.key==='+' || e.key==='=';
+    textScale = Math.max(0.5, Math.min(1.8, textScale * (up ? 1.1 : 1/1.1)));
+    applyTime(TIMES[timeIdx]);
+    syncHash();
+  }
+  if(e.key==='f'||e.key==='F'){
+    let i = FONT_STYLES.findIndex(f => f.kind === letterStyle.kind && f.glyph === letterStyle.glyph);
+    letterStyle = FONT_STYLES[(i + 1) % FONT_STYLES.length];
+    applyTime(TIMES[timeIdx]);
+    syncHash();
+  }
+  if(e.key==='t'||e.key==='T'){
+    timeIdx = (timeIdx + 1) % TIMES.length;
+    applyTime(TIMES[timeIdx]);
+    const cap = document.getElementById('cap');
+    cap.textContent = cap.textContent.replace(/[a-z]+$/, TIMES[timeIdx].name);
+    syncHash();
+  }
+  if(e.key==='s'||e.key==='S'){
+    const a=document.createElement('a');
+    a.download=`desert-syntax_${stateTag()}.png`;
+    syncHash();
+    a.href=renderer.domElement.toDataURL('image/png');
+    a.click();
+  }
+});
+
+function newSeed(){ SEED=Math.floor(Math.random()*99999); rebuild(); syncHash(); }
+
+// ---- reproducible state: seed + everything the keys/drag can change ----
+const GLYPH_NAMES = { '#':'hash', '@':'at', '▓':'dark', '▒':'mid', '█':'full' };
+function fontName(f){ return f.kind === 'pixel' ? 'pixel-' + GLYPH_NAMES[f.glyph] : f.kind; }
+function fontFromName(n){ return FONT_STYLES.find(f => fontName(f) === n); }
+const deg = r => Math.round(r*180/Math.PI);
+
+// e.g. 48213_dusk_solid_x1.21_tx4.5_ty-12  (size/offset only when changed)
+function stateTag(){
+  const parts = [SEED, TIMES[timeIdx].name, fontName(letterStyle)];
+  if(Math.abs(textScale-1) > 1e-3) parts.push('x' + textScale.toFixed(2));
+  const pc = v => Math.round(v*1000)/10;          // offset in % of frame, 0.1 precision
+  if(pc(textOff.x)) parts.push('tx' + pc(textOff.x));
+  if(pc(textOff.y)) parts.push('ty' + pc(textOff.y));
+  return parts.join('_');
+}
+
+// rebuild exactly from a tag (filename or #hash)
+function loadTag(tag){
+  const parts = tag.replace(/^desert-syntax_/, '').replace(/\.png$/, '').split('_');
+  const seed = parseInt(parts[0], 10);
+  if(!isFinite(seed)) return false;
+  SEED = seed; rebuild();
+  textScale = 1;                       // absent suffix means default size
+  for(const p of parts.slice(1)){
+    const ti = TIMES.findIndex(t => t.name === p);
+    if(ti >= 0) { timeIdx = ti; continue; }
+    const f = fontFromName(p);
+    if(f) { letterStyle = f; continue; }
+    if(/^x[\d.]+$/.test(p))   { textScale = parseFloat(p.slice(1)); continue; }
+    if(/^ry-?\d+$/.test(p))   { pivot.rotation.y = parseInt(p.slice(2),10)*Math.PI/180; continue; }
+    if(/^rx-?\d+$/.test(p))   { pivot.rotation.x = parseInt(p.slice(2),10)*Math.PI/180; continue; }
+    if(/^tx-?[\d.]+$/.test(p)) { textOff.x = parseFloat(p.slice(2))/100; continue; }
+    if(/^ty-?[\d.]+$/.test(p)) { textOff.y = parseFloat(p.slice(2))/100; continue; }
+  }
+  applyTime(TIMES[timeIdx]);
+  return true;
+}
+
+// keep the URL hash in sync so the page link itself reproduces the view
+function syncHash(){
+  try { history.replaceState(null, '', '#' + stateTag()); } catch(e) {}
+}
+
+// ---- loop ---------------------------------------------------
+function tick(){
+  requestAnimationFrame(tick);
+  if(!dragging) pivot.rotation.y += vy;
+  renderer.clear();
+  renderer.render(scene, camera);
+  if(footerDirty){ footerDirty = false; drawFooter(measureFooterBand()); }
+  renderer.clearDepth();
+  renderer.render(overlayScene, overlayCam);
+}
+
+// open #<tag> to reproduce a saved image, e.g. #48213_dusk_solid_x1.21_ry-35
+const _h = decodeURIComponent((location.hash || '').slice(1));
+if(!(_h && loadTag(_h))) newSeed();
+window.addEventListener('hashchange', () => {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if(h && h !== stateTag()) loadTag(h);
+});
+tick();
+</script>
+</body>
+</html>
