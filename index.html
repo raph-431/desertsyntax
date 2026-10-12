@@ -2,126 +2,352 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>desert syntax</title>
-  <meta name="description" content="desert syntax — coming soon.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Desert Syntax</title>
+  <meta name="description" content="Desert Syntax — The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 5, 2026.">
+  <meta property="og:title" content="Desert Syntax">
+  <meta property="og:description" content="The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 5, 2026.">
+  <meta property="og:image" content="trailer-poster.jpg">
   <style>
+    /* Layout: the masthead centred at the top; below it the trailer beside the dates column, the pair centred as one group, the trailer level with the countdown. */
+    html { font-size: clamp(16px, 1.2vw, 28px); }
+    :root {
+      --film: min(62vh, 36vw);
+      --pane: calc(var(--film) + 4vw);
+      --col: min(60vw, 60ch, 100vw - 2rem - var(--pane));
+      /* the poster's palette, as the app uses it: day = morning/afternoon sky, night = its night */
+      --bg: #f1f0ec; --ground: #e4e2dc; --title: #ababab; --muted: #a1a1a1;
+      --ink: #2a2a27; --rule: #cfcfcd; --pink: #e9789e; --shadow: rgba(0, 0, 0, 0.14);
+      --font: Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="day"]):not([data-theme="light"]) {
+        --bg: #2c2c2d; --ground: #3a3a3a; --title: #7c7c7c; --muted: #868686;
+        --ink: #d8d8d4; --rule: #4a4a46; --shadow: rgba(0, 0, 0, 0.6);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="night"], :root[data-theme="dark"] {
+      --bg: #2c2c2d; --ground: #3a3a3a; --title: #7c7c7c; --muted: #868686;
+      --ink: #d8d8d4; --rule: #4a4a46; --shadow: rgba(0, 0, 0, 0.6);
+      color-scheme: dark;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body { height: 100%; }
-
     body {
-      font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      color: #f6efe2;
-      background: #0b2a55 url("marfadesert.webp") center center / cover no-repeat fixed;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
+      min-height: 100vh;
+      font-family: var(--font);
+      font-size: 1rem;
+      color: var(--ink);
+      background: var(--bg);
+      padding: 0 1rem 4rem;
       -webkit-font-smoothing: antialiased;
     }
+    .wrap {
+      display: grid;
+      grid-template-columns: var(--film) var(--col);
+      column-gap: 4vw;
+      justify-content: center;
+      align-items: start;
+    }
+    main { max-width: var(--col); min-width: 0; display: flex; flex-direction: column; gap: 2.75rem; }
 
-    /* Subtle darkening so text stays legible over the clouds */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(6, 24, 52, 0.45) 0%,
-        rgba(6, 24, 52, 0.15) 45%,
-        rgba(60, 40, 10, 0.35) 100%
-      );
-      pointer-events: none;
+    /* ---- masthead: DESERT SYNTAX in the poster's ANSI-shadow glyphs, one line, centred ---- */
+    .masthead { width: min(100vw - 2rem, var(--col)); margin: 5vh auto 2.75rem; }
+    .title {
+      font-size: calc(min(100vw - 2rem, var(--col)) / 64);
+      line-height: 1; color: var(--title); white-space: pre; overflow: hidden;
+    }
+    .title .l { transition: color 0.1s ease; }
+    .title .l.hot { color: var(--pink); }
+    .subtitle {
+      display: flex; justify-content: space-between; margin-top: 0.6rem;
+      font-size: clamp(0.5rem, calc(min(100vw - 2rem, var(--col)) / 60), 0.75rem);
+      text-transform: uppercase; color: var(--muted);
     }
 
-    main {
-      position: relative;
-      padding: 2rem 1.5rem;
-      animation: rise 1.2s ease-out both;
-    }
+    .tracked { font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
 
-    h1 {
-      font-weight: 300;
-      font-size: clamp(2.4rem, 8vw, 6.5rem);
-      letter-spacing: 0.18em;
-      text-transform: lowercase;
-      line-height: 1.1;
-      text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
-    }
+    /* ---- countdown ---- */
+    .count { display: flex; flex-direction: column; gap: 0.5rem; }
+    .count .digits { display: flex; flex-wrap: wrap; gap: 0 1.4rem; font-variant-numeric: tabular-nums; }
+    .count .digits span { display: flex; align-items: baseline; gap: 0.4rem; }
+    .count .digits b { font-weight: 400; font-size: 2.4rem; line-height: 1.1; letter-spacing: 0.04em; }
+    .count .digits i { font-style: normal; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+    .count .state { font-size: 1.1rem; letter-spacing: 0.04em; }
+    .count[data-mode="count"] .state, .count:not([data-mode="count"]) .digits { display: none; }
 
-    h1 .cursor {
-      display: inline-block;
-      width: 0.4em;
-      height: 1em;
-      margin-left: 0.15em;
-      vertical-align: -0.1em;
-      background: currentColor;
-      animation: blink 1.1s steps(2, start) infinite;
+    /* ---- the two dates on a vertical rule ---- */
+    .line { position: relative; padding-left: 2rem; display: flex; flex-direction: column; gap: 2.5rem; }
+    .line::before { content: ""; position: absolute; left: 0.3rem; top: 0.6rem; bottom: 0.6rem; width: 1px; background: var(--rule); }
+    .stop { position: relative; display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; }
+    .stop:focus-visible { outline: none; }
+    .stop:focus-visible .day { text-decoration: underline; text-decoration-color: var(--pink); text-underline-offset: 0.3em; }
+    /* marker: a hollow ring, or the pink fruit for the selected date */
+    .stop::before {
+      content: ""; position: absolute; left: -2rem; top: 0.55rem;
+      width: 0.6rem; height: 0.6rem; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--muted);
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
+    .stop.active::before { background: var(--pink); border-color: var(--pink); }
+    .day { font-size: 1.4rem; line-height: 1.2; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
+    .meta { font-size: 0.65rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+    h2 { font-weight: 700; font-size: 0.95rem; letter-spacing: 0.04em; line-height: 1.4; transition: color 0.3s ease; }
+    .body { line-height: 1.7; font-size: 0.85rem; transition: color 0.3s ease; }
+    .stop:not(.active) .day, .stop:not(.active) h2, .stop:not(.active) .body { color: var(--muted); }
+    .stop:not(.active):hover .day { color: var(--ink); }
+    .stop.past { opacity: 0.6; }
 
-    p {
-      margin-top: 1.5rem;
-      font-size: clamp(0.85rem, 1.6vw, 1.1rem);
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      opacity: 0.85;
-      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
+    /* ---- trailer: a square standing in the left pane, with the app's button on it ---- */
+    .film {
+      position: sticky; top: 5vh; width: var(--film); height: var(--film);
+      background: var(--ground); border: 1px solid var(--rule);
     }
-
-    footer {
-      position: fixed;
-      bottom: 1.25rem;
-      left: 0;
-      right: 0;
-      font-size: 0.7rem;
-      letter-spacing: 0.2em;
-      opacity: 0.6;
-      text-align: center;
+    .film video { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .film .cap { position: absolute; left: 0.75rem; bottom: 0.75rem; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+    .film button {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      font: inherit; font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--ink); background: var(--ground); border: 1px solid var(--rule);
+      padding: 0.6rem 1.2rem; cursor: pointer;
     }
+    .film button:hover, .film button:focus-visible { background: var(--ink); color: var(--bg); border-color: var(--ink); outline: none; }
+    .film.playing button, .film.playing .cap { display: none; }
 
-    footer a {
-      color: inherit;
-      text-decoration: none;
-      border-bottom: 1px solid rgba(246, 239, 226, 0.4);
-      transition: border-color 0.2s ease, opacity 0.2s ease;
+    /* ---- colophon: tracked lines like the poster's footer ---- */
+    .colophon { margin-top: 3.5rem; text-align: center; color: var(--muted); }
+    .colophon .cl { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; line-height: 2; }
+    .colophon .cl.small { font-size: 0.55rem; }
+    a.quiet { font-size: inherit; letter-spacing: inherit; text-transform: uppercase; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--rule); cursor: pointer; }
+    a.quiet:hover, a.quiet:focus-visible { color: var(--ink); border-bottom-color: var(--ink); outline: none; }
+    :focus-visible { outline: 1px solid var(--pink); outline-offset: 2px; }
+    /* day / night: one icon at the top right, showing the theme it switches to */
+    .theme-toggle {
+      position: fixed; top: 1rem; right: 1rem; z-index: 2;
+      width: 2rem; height: 2rem; padding: 0.4rem;
+      color: var(--muted); background: none; border: 0; cursor: pointer;
     }
-
-    footer a:hover,
-    footer a:focus-visible {
-      border-bottom-color: currentColor;
-      outline: none;
+    .theme-toggle svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+    .theme-toggle:hover, .theme-toggle:focus-visible { color: var(--ink); }
+    .theme-toggle:focus-visible { outline: 1px solid var(--pink); outline-offset: 0; }
+    .theme-toggle .sun, .theme-toggle[data-to="day"] .moon { display: none; }
+    .theme-toggle[data-to="day"] .sun { display: block; }
+    /* phones: the trailer stands above the column instead of beside it */
+    @media (max-width: 700px) {
+      :root { --col: calc(100vw - 2rem); }
+      .wrap { grid-template-columns: 1fr; justify-items: center; row-gap: 2rem; }
+      .masthead { margin-top: 3.5rem; }
+      .film { position: relative; top: auto; width: min(70vw, 45vh); height: min(70vw, 45vh); }
+      main { width: 100%; }
+      .count .digits { gap: 0 1rem; }
+      .count .digits b { font-size: 1.7rem; }
     }
-
-    footer:hover { opacity: 0.9; }
-
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes blink {
-      to { visibility: hidden; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      main, h1 .cursor { animation: none; }
-    }
-
-    /* background-attachment: fixed is janky on iOS; fall back to scroll */
-    @media (hover: none) and (pointer: coarse) {
-      body { background-attachment: scroll; }
-    }
+    @media (prefers-reduced-motion: reduce) { .title .l, .stop::before, .day, h2, .body { transition: none; } }
   </style>
+  <script>
+    // theme before first paint: a stored choice wins, else the system preference (via CSS)
+    try { var t0 = localStorage.getItem("ds.theme"); if (t0 === "day" || t0 === "night") document.documentElement.dataset.theme = t0; } catch (e) {}
+  </script>
 </head>
 <body>
-  <main>
-    <h1>desert syntax<span class="cursor" aria-hidden="true"></span></h1>
-    <p>coming soon</p>
-  </main>
-  <footer>&copy; 2026 <a href="https://aerastudio.digital" target="_blank" rel="noopener">ae/ra studio</a></footer>
+
+<button type="button" class="theme-toggle" aria-label="Switch to night">
+  <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>
+</button>
+
+<header class="masthead">
+  <pre id="title" class="title" aria-label="desert syntax"></pre>
+  <div id="subtitle" class="subtitle" aria-label="the book, the machine, the community"></div>
+</header>
+<div class="wrap">
+<div class="film">
+  <video id="trailer" src="trailer.mp4" poster="trailer-poster.jpg" playsinline preload="metadata"></video>
+  <span class="cap">Trailer · 0:30</span>
+  <button type="button" id="film-btn" aria-label="Play trailer">Play</button>
+</div>
+
+<main>
+
+  <div class="count" id="count" data-mode="count">
+    <span class="tracked" id="count-label">Next · The Live Performance</span>
+    <div class="digits">
+      <span><b id="cd-d">—</b><i>days</i></span>
+      <span><b id="cd-h">—</b><i>hrs</i></span>
+      <span><b id="cd-m">—</b><i>min</i></span>
+      <span><b id="cd-s">—</b><i>sec</i></span>
+    </div>
+    <span class="state" id="count-state"></span>
+  </div>
+
+  <div class="line">
+    <div class="stop" id="stop-0" tabindex="0">
+      <span class="day">24 October 2026</span>
+      <span class="meta">11:00 AM – 3:00 PM · Marfa, TX</span>
+      <h2>The Live Performance</h2>
+      <p class="body">Join us at The Artist Fair during Art Blocks Weekend. Stop by the Bureau of Desert Syntax to pick up a prompt bookmark, submit your words, and co-author the Desert Syntax book in real time as paragraphs go live onchain.</p>
+    </div>
+    <div class="stop" id="stop-1" tabindex="0">
+      <span class="day">5 November 2026</span>
+      <span class="meta">Onchain · Free to mint</span>
+      <h2>The Book Release</h2>
+      <p class="body">The complete, finalized edition of Desert Syntax, including its editorial framing, and the complete collection of generated chapters captured during the live performance, will be published onchain and made freely available to mint.</p>
+    </div>
+  </div>
+
+</main>
+</div>
+<footer class="colophon">
+  <div class="cl">Artblocks Weekend - Marfa, Texas</div>
+  <div class="cl">The Artist Fair - Sat Oct 24th 11am-3pm</div>
+  <div class="cl small">&copy; 2026 <a href="https://aerastudio.digital" target="_blank" rel="noopener" class="quiet">ae/ra studio</a></div>
+</footer>
+
+<script>
+  // ---- masthead: the poster's ANSI-shadow glyphs, one line, with the app's pink sweep
+  var SHADOW = {
+    D: ["██████╗ ", "██╔══██╗", "██║  ██║", "██║  ██║", "██████╔╝", "╚═════╝ "],
+    E: ["███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "███████╗", "╚══════╝"],
+    S: ["███████╗", "██╔════╝", "███████╗", "╚════██║", "███████║", "╚══════╝"],
+    R: ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██║  ██║", "╚═╝  ╚═╝"],
+    T: ["████████╗", "╚══██╔══╝", "   ██║   ", "   ██║   ", "   ██║   ", "   ╚═╝   "],
+    Y: ["██╗   ██╗", "╚██╗ ██╔╝", " ╚████╔╝ ", "  ╚██╔╝  ", "   ██║   ", "   ╚═╝   "],
+    N: ["███╗   ██╗", "████╗  ██║", "██╔██╗ ██║", "██║╚██╗██║", "██║ ╚████║", "╚═╝  ╚═══╝"],
+    A: [" █████╗ ", "██╔══██╗", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"],
+    X: ["██╗  ██╗", "╚██╗██╔╝", " ╚███╔╝ ", " ██╔██╗ ", "██╔╝ ██╗", "╚═╝  ╚═╝"],
+    " ": ["   ", "   ", "   ", "   ", "   ", "   "]
+  };
+  var TITLE = "DESERT SYNTAX";
+  var titleEl = document.getElementById("title");
+  var letters = TITLE.split("");
+  for (var row = 0; row < 6; row++) {
+    letters.forEach(function (ch, i) {
+      var s = document.createElement("span");
+      s.className = "l"; s.dataset.i = i;
+      s.textContent = (SHADOW[ch] || SHADOW[" "])[row];
+      titleEl.appendChild(s);
+    });
+    if (row < 5) titleEl.appendChild(document.createTextNode("\n"));
+  }
+  function sweepTitle() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var step = 800 / (letters.length - 1);
+    letters.forEach(function (ch, i) {
+      if (ch === " ") return;
+      var spans = titleEl.querySelectorAll('.l[data-i="' + i + '"]');
+      setTimeout(function () { spans.forEach(function (s) { s.classList.add("hot"); }); }, i * step);
+      setTimeout(function () { spans.forEach(function (s) { s.classList.remove("hot"); }); }, i * step + 200);
+    });
+  }
+  setInterval(sweepTitle, 20000);
+  "THE BOOK, THE MACHINE, THE COMMUNITY.".split("").forEach(function (ch) {
+    var s = document.createElement("span");
+    s.textContent = ch === " " ? " " : ch;
+    document.getElementById("subtitle").appendChild(s);
+  });
+
+  // ---- day / night: T toggles, the footer link too; stored per browser
+  function currentTheme() {
+    var t = document.documentElement.dataset.theme;
+    if (t === "day" || t === "light") return "day";
+    if (t === "night" || t === "dark") return "night";
+    return matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "day";
+  }
+  var toggles = document.querySelectorAll(".theme-toggle");
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem("ds.theme", t); } catch (e) {}
+    paintToggles(t);
+  }
+  function paintToggles(t) {
+    var to = t === "day" ? "night" : "day";
+    toggles.forEach(function (el) { el.dataset.to = to; el.setAttribute("aria-label", "Switch to " + to); });
+  }
+  paintToggles(currentTheme());
+  toggles.forEach(function (el) {
+    el.addEventListener("click", function () { setTheme(currentTheme() === "day" ? "night" : "day"); });
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { paintToggles(currentTheme()); });
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "t" || e.key === "T") { e.preventDefault(); setTheme(currentTheme() === "day" ? "night" : "day"); }
+  });
+
+  // ---- countdown to the next date (Marfa time: CDT on Oct 24, CST on Nov 5, hour not set yet)
+  var EVENTS = [
+    { name: 'The Live Performance', start: Date.UTC(2026, 9, 24, 16, 0), end: Date.UTC(2026, 9, 24, 20, 0) },
+    { name: 'The Book Release',     start: Date.UTC(2026, 10, 5, 6, 0),  end: Date.UTC(2026, 10, 6, 6, 0) }
+  ];
+  var count = document.getElementById('count');
+  var label = document.getElementById('count-label');
+  var state = document.getElementById('count-state');
+  var cd = { d: document.getElementById('cd-d'), h: document.getElementById('cd-h'),
+             m: document.getElementById('cd-m'), s: document.getElementById('cd-s') };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var stops = EVENTS.map(function (_, i) { return document.getElementById('stop-' + i); });
+  var selected = -1;
+  function select(i) {
+    selected = i;
+    stops.forEach(function (stop, k) { stop.classList.toggle('active', k === i); });
+  }
+  stops.forEach(function (stop, i) {
+    stop.addEventListener('click', function () { select(i); });
+    stop.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
+    });
+  });
+  function tick() {
+    var now = Date.now(), i, ev;
+    for (i = 0; i < EVENTS.length; i++) stops[i].classList.toggle('past', now >= EVENTS[i].end);
+    for (i = 0; i < EVENTS.length; i++) if (now < EVENTS[i].end) { ev = EVENTS[i]; break; }
+    if (!ev) {
+      if (selected < 0) select(EVENTS.length - 1);
+      count.dataset.mode = 'done';
+      label.textContent = 'Published · The Book Release';
+      state.textContent = 'The book is out and free to mint.';
+      return;
+    }
+    if (selected < 0) select(i);
+    if (now >= ev.start) {
+      count.dataset.mode = 'now';
+      label.textContent = 'Now · ' + ev.name;
+      state.textContent = i === 0 ? 'Happening now in Marfa.' : 'Published today.';
+      return;
+    }
+    count.dataset.mode = 'count';
+    label.textContent = 'Next · ' + ev.name;
+    var left = Math.floor((ev.start - now) / 1000);
+    cd.d.textContent = Math.floor(left / 86400);
+    cd.h.textContent = pad(Math.floor(left % 86400 / 3600));
+    cd.m.textContent = pad(Math.floor(left % 3600 / 60));
+    cd.s.textContent = pad(left % 60);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---- trailer: paused on the poster frame; Play starts it with sound, once
+  var film = document.querySelector('.film');
+  var video = document.getElementById('trailer');
+  var btn = document.getElementById('film-btn');
+  btn.addEventListener('click', function () {
+    if (video.ended) video.currentTime = 0;
+    video.muted = false;
+    video.play().catch(function () {});
+  });
+  video.addEventListener('click', function () {
+    if (video.paused) video.play().catch(function () {}); else video.pause();
+  });
+  video.addEventListener('play', function () { film.classList.add('playing'); });
+  video.addEventListener('pause', function () {
+    film.classList.remove('playing');
+    btn.textContent = video.ended ? 'Replay' : 'Play';
+    btn.setAttribute('aria-label', video.ended ? 'Replay trailer' : 'Play trailer');
+  });
+</script>
+
 </body>
 </html>
