@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Desert Syntax</title>
-  <meta name="description" content="Desert Syntax — The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 5, 2026.">
+  <meta name="description" content="Desert Syntax — The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 21, 2026.">
   <meta property="og:title" content="Desert Syntax">
-  <meta property="og:description" content="The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 5, 2026.">
+  <meta property="og:description" content="The Book, the Machine, the Community. Live performance October 24, 2026 in Marfa, TX. Book release November 21, 2026.">
   <meta property="og:image" content="trailer-poster.jpg">
   <style>
     /* Layout: the masthead centred at the top; below it the trailer beside the dates column, the pair centred as one group, the trailer level with the countdown. */
@@ -190,7 +190,7 @@
       <p class="body">Join us at The Artist Fair during Art Blocks Weekend. Stop by the Bureau of Desert Syntax to pick up a prompt bookmark, submit your words, and co-author the Desert Syntax book in real time as paragraphs go live onchain.</p>
     </div>
     <div class="stop" id="stop-1" tabindex="0">
-      <span class="day">5 November 2026</span>
+      <span class="day">21 November 2026</span>
       <span class="meta">Onchain · Free to mint</span>
       <h2>The Book Release</h2>
       <p class="body">The complete, finalized edition of Desert Syntax, including its editorial framing, and the complete collection of generated chapters captured during the live performance, will be published onchain and made freely available to mint.</p>
@@ -277,10 +277,10 @@
     if (e.key === "t" || e.key === "T") { e.preventDefault(); setTheme(currentTheme() === "day" ? "night" : "day"); }
   });
 
-  // ---- countdown to the next date (Marfa time: CDT on Oct 24, CST on Nov 5, hour not set yet)
+  // ---- countdown to the next date (Marfa time: CDT on Oct 24, CST on Nov 21, hour not set yet)
   var EVENTS = [
     { name: 'The Live Performance', start: Date.UTC(2026, 9, 24, 16, 0), end: Date.UTC(2026, 9, 24, 20, 0) },
-    { name: 'The Book Release',     start: Date.UTC(2026, 10, 5, 6, 0),  end: Date.UTC(2026, 10, 6, 6, 0) }
+    { name: 'The Book Release',     start: Date.UTC(2026, 10, 21, 6, 0), end: Date.UTC(2026, 10, 22, 6, 0) }
   ];
   var count = document.getElementById('count');
   var label = document.getElementById('count-label');

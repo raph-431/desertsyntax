@@ -15,7 +15,7 @@
 </head>
 <body>
 <div id="wrap"><div id="cap"></div></div>
-<p class="hint">drag — move title &nbsp;·&nbsp; tap / space — new plant &nbsp;·&nbsp; T — time of day &nbsp;·&nbsp; F — font &nbsp;·&nbsp; + / − — text size &nbsp;·&nbsp; S — save</p>
+<p class="hint">drag — move title &nbsp;·&nbsp; tap / space — new plant &nbsp;·&nbsp; T — time of day &nbsp;·&nbsp; F — font &nbsp;·&nbsp; B — title front / back &nbsp;·&nbsp; + / − — text size &nbsp;·&nbsp; 1 / 3 — text darker / lighter (2 resets) &nbsp;·&nbsp; A — footer alignment &nbsp;·&nbsp; S — save</p>
 <script>
 // ---- diagnostics: surface any failure on the page itself ----
 window.onerror = function(msg, src, line){
@@ -85,8 +85,10 @@ const PIX = {
   X:["1   1"," 1 1 ","  1  "," 1 1 ","1   1"],
 };
 const WORDS = ['DESERT', 'SYNTAX'];
-const SUBTITLE = 'A COLLABORATIVE WRITING EXPERIENCE IN THE AGE OF AI';
-const FOOTER   = 'THE ARTIST FAIR - SATURDAY OCT 24th from 11 am to 3pm';
+const SUBTITLE = 'A COMMUNITY-AUTHORED PERFORMANCE SCORE';
+const FOOTER2   = 'ARTBLOCKS WEEKEND - MARFA, TEXAS';
+const FOOTER1   = 'CO-CREATED WITH FRIENDS, PARTICIPANTS AND AI';
+const FOOTER3   = 'THE ARTIST FAIR - SAT OCT 24th 11am-3pm';
 
 function shadowLines(word){
   const out = Array(6).fill('');
@@ -110,8 +112,7 @@ const bgCtx = bgCanvas.getContext('2d');
 const bgTex = new THREE.CanvasTexture(bgCanvas);
 scene.background = bgTex;
 
-// footer lines sit at the bottom edge, over the ground, so they need an
-// overlay pass; the DESERT SYNTAX title stays on the backdrop behind the plant
+// title and footer are drawn on an overlay pass so they sit in front of the plant
 const ovCanvas = document.createElement('canvas');
 ovCanvas.width = ovCanvas.height = 2048;
 const ovCtx = ovCanvas.getContext('2d');
@@ -125,6 +126,11 @@ overlayScene.add(new THREE.Mesh(
 
 let letterStyle = { kind:'shadow', glyph:'#' };
 let textScale = 1;   // +/- keys; persists across seeds
+let inkAdj = 0;      // 1 / 3 keys: text darker / lighter, in steps; 2 resets; persists across seeds
+const FOOTER_ALIGNS = ['center', 'left', 'right'];
+let footerAlign = 'center';   // A key cycles; persists across seeds
+const INK_STEP = 12;
+const shade = v => Math.max(0, Math.min(255, Math.round(v + inkAdj*INK_STEP)));
 let textOff = { x:0, y:0 };   // title-block drag offset, fraction of frame; reset per seed
 const FONT_STYLES = [
   { kind:'shadow', glyph:'' },
@@ -138,7 +144,8 @@ const FONT_STYLES = [
 
 // plant silhouette in normalized screen coords (0..1, y down), set per seed
 let plantBox = { top:new Array(64).fill(Infinity), horizon:0.6 };
-let titleLayout = 'stack';
+let titleLayout = 'row';   // title is always DESERT SYNTAX on one line
+let titleFront = true;     // B key: title in front of (overlay) or behind (backdrop) the plant
 
 function trimEndAll(lines){ return lines.map(l => l.replace(/\s+$/, '')); }
 const unshadow = lines => lines.slice(0,5).map(l => l.replace(/[╗╔╝╚═║]/g, ' '));
@@ -178,117 +185,29 @@ function columnBlock(word){
   return out;
 }
 
+let curBg = 0xf1f0ec;   // current sky gray; the overlay picks its ink from it
 function drawBackdrop(bgHex, gndHex){
   const W = bgCanvas.width, H = bgCanvas.height;
-  const g = bgHex & 0xff;
-  const ink = g > 128 ? g - 70 : g + 80;       // readable, still neutral gray
+  curBg = bgHex;
   bgCtx.fillStyle = '#' + bgHex.toString(16).padStart(6,'0');
   bgCtx.fillRect(0, 0, W, H);
-
-  const family = 'Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
-  bgCtx.font = `100px ${family}`;
-  const cw = bgCtx.measureText('█').width / 100;       // char width per px of font size
-  const lineK = letterStyle.kind === 'shadow' ? 1.12 : 1.15;
-  const fit = (lines, w, h) => (w <= 0 || h <= 0) ? 0
-    : Math.min(w / (widthOf(lines)*cw), h / (lines.length*lineK));
-
-  // ---- adaptive layout: find clear sky windows above the plant skyline ----
-  const N = SKY_N, colW = W/N;
-  const skyTop = H*0.04, gapY = H*0.03;
-  const skyBot = plantBox.horizon*H - H*0.015;             // background is hidden below this
-  const mCol = Math.ceil(N*0.05);                          // side margins, in columns
-  const gCol = 2;                                          // horizontal gap to the plant, in columns
-  // clear height available over columns [i..j] (plus a gap each side)
-  const clearH = (i, j) => {
-    let t = skyBot;
-    for(let c=Math.max(0,i-gCol); c<=Math.min(N-1,j+gCol); c++) t = Math.min(t, plantBox.top[c]*H - gapY);
-    return t - skyTop;
-  };
-  const dims = lines => ({ cols: widthOf(lines), rows: lines.length, lines });
-  const fitD = (d, w, h) => (w <= 0 || h <= 0) ? 0 : Math.min(w/(d.cols*cw), h/(d.rows*lineK));
-  // every window, for one block: [{i,j,fs,h}]
-  const subReserve = H*0.05;                              // space kept for the subtitle line
-  const windows = d => {
-    const out = [];
-    for(let i=mCol; i<N-mCol; i++) for(let j=i; j<N-mCol; j++){
-      const h = clearH(i,j), fs = fitD(d, (j-i+1)*colW, h - subReserve);
-      if(fs > 0) out.push({ i, j, h, fs });
-    }
-    return out;
-  };
-  const fsCap = fitD(dims(stackBlock()), W*0.88, H*0.53);  // never bigger than the full-width title
-
-  const cands = [];
-  // option 1: whole title in one clear window (two-line stack or single row)
-  for(const [name, d] of [['above', dims(stackBlock())], ['above-row', dims(rowBlock())]]){
-    let b = null; for(const w of windows(d)) if(!b || w.fs > b.fs) b = w;
-    if(b) cands.push({ name, bias:1.08, fs:Math.min(b.fs, fsCap), place:[[d, b]] });
-  }
-  // option 2: DESERT in a window left of SYNTAX's window (words as rows, or letter columns)
-  for(const [name, dA, dB] of [
-    ['split',     dims(wordLines(WORDS[0])),   dims(wordLines(WORDS[1]))],
-  ]){
-    const wa = windows(dA), wb = windows(dB);
-    const bestEnd = new Array(N).fill(null), bestStart = new Array(N+1).fill(null);
-    for(const w of wa) if(!bestEnd[w.j] || w.fs > bestEnd[w.j].fs) bestEnd[w.j] = w;
-    for(let k=1; k<N; k++) if(bestEnd[k-1] && (!bestEnd[k] || bestEnd[k-1].fs > bestEnd[k].fs)) bestEnd[k] = bestEnd[k-1];
-    for(const w of wb) if(!bestStart[w.i] || w.fs > bestStart[w.i].fs) bestStart[w.i] = w;
-    for(let k=N-2; k>=0; k--) if(bestStart[k+1] && (!bestStart[k] || bestStart[k+1].fs > bestStart[k].fs)) bestStart[k] = bestStart[k+1];
-    let b = null;
-    for(let k=0; k<N-1; k++){
-      const A = bestEnd[k], B = bestStart[k+1];
-      if(!A || !B) continue;
-      const fs = Math.min(A.fs, B.fs);
-      if(!b || fs > b.fs) b = { fs, A, B };
-    }
-    if(b) cands.push({ name, bias:1.0, fs:Math.min(b.fs, fsCap), place:[[dA, b.A], [dB, b.B]], shareH:true });
-  }
-
-  let best = cands.reduce((a,c) => (!a || c.fs*c.bias > a.fs*a.bias) ? c : a, null);
-  // nothing usable: fall back to the full title behind the plant
-  if(!best || best.fs < fsCap*0.28){
-    const d = dims(stackBlock());
-    best = { name:'behind', fs:fsCap, place:[[d, { i:0, j:N-1, h:H*0.53 }]] };
-  }
-  titleLayout = best.name;
-  const fs = best.fs * textScale, lh = fs*lineK;
-  const commonH = best.shareH ? Math.min(...best.place.map(([,w]) => w.h)) : null;
-
-  bgCtx.font = `${fs}px ${family}`;
-  bgCtx.textBaseline = 'top';
-  bgCtx.fillStyle = `rgb(${ink},${ink},${ink})`;
-  const subN = [...SUBTITLE].length;
-  const subGap = Math.max(lh*0.45, H*0.014);
-  best.place.forEach(([d, w], bi) => {
-    const bw = d.cols*cw*fs, bh = d.rows*lh;
-    const x = w.i*colW + ((w.j-w.i+1)*colW - bw)/2 + textOff.x*W;
-    // subtitle goes under the (first / left) block, tracked to that block's width
-    const withSub = bi === 0;
-    const sfs = Math.max(H*0.011, Math.min(bw / (subN*cw*1.45), H*0.021));
-    const groupH = bh + (withSub ? subGap + sfs : 0);
-    const y = skyTop + ((commonH ?? w.h) - groupH)/2 + (best.name === 'behind' ? H*0.01 : 0) + textOff.y*H;
-    bgCtx.font = `${fs}px ${family}`;
-    bgCtx.fillStyle = `rgb(${ink},${ink},${ink})`;
-    d.lines.forEach((l,i) => bgCtx.fillText(l, x, y + i*lh));
-    if(withSub){
-      const sInk = g > 128 ? g - 80 : g + 90;
-      const sw = Math.max(bw, subN*cw*sfs*1.1);          // never squeeze letters together
-      const sx = x + (bw - sw)/2;
-      const step = (sw - cw*sfs) / (subN-1);
-      bgCtx.font = `${sfs}px ${family}`;
-      bgCtx.fillStyle = `rgb(${sInk},${sInk},${sInk})`;
-      [...SUBTITLE].forEach((c,i) => bgCtx.fillText(c, sx + i*step, y + bh + subGap));
-    }
-  });
+  if(!titleFront) drawTitle(bgCtx);
   bgTex.needsUpdate = true;
 
-  // footer is drawn after the next 3D render, once we know how bright the ground under it is
+  // title and footer live on the overlay, in front of the plant; they are
+  // redrawn after the next 3D render, once the ground brightness is known
   footerDirty = true;
 }
 
-// ---- footer: event line, legible on any ground -------------
+// ---- footer: event lines, legible on any ground ------------
 let footerDirty = true;
-const FOOTER_BAND = { x0:0.10, x1:0.90, y0:0.925, y1:0.975 };   // where the footer sits (0..1, y down)
+// footer lines top to bottom; `size` is relative to the main footer size
+const FOOTER = [
+  { text: FOOTER2, size: 1 },
+  { text: FOOTER3, size: 1 },
+  { text: FOOTER1, size: 0.72 },   // the credit line, smaller, underneath
+];
+const FOOTER_BAND = { x0:0.10, x1:0.90, y0:0.895, y1:0.975 };   // where the footer sits (0..1, y down)
 
 // mean luminance (0..255) of the rendered frame under the footer band
 function measureFooterBand(){
@@ -306,27 +225,79 @@ function measureFooterBandRaw(){
   return n ? sum/n : 200;
 }
 
+// ---- title: DESERT SYNTAX on one line, in front of the plant --------
+function drawTitle(ctx){
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const family = 'Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  const g = curBg & 0xff;
+  const ink  = shade(g > 128 ? g - 70 : g + 80); // readable, still neutral gray
+  const sInk = shade(g > 128 ? g - 80 : g + 90);
+  ctx.font = `100px ${family}`;
+  const cw = ctx.measureText('█').width / 100;   // char width per px of font size
+  const lineK = letterStyle.kind === 'shadow' ? 1.12 : 1.15;
+  const lines = rowBlock();
+  const cols = widthOf(lines), rows = lines.length;
+  const fs = Math.min(W*0.88/(cols*cw), H*0.20/(rows*lineK)) * textScale;
+  const lh = fs*lineK, bw = cols*cw*fs, bh = rows*lh;
+  const x = (W - bw)/2 + textOff.x*W;
+  const y = H*0.05 + textOff.y*H;
+  ctx.textBaseline = 'top';
+  // plain fill, in front or behind: no halo or outline, so the letters stay crisp
+  ctx.font = `${fs}px ${family}`;
+  ctx.fillStyle = `rgb(${ink},${ink},${ink})`;
+  lines.forEach((l,i) => ctx.fillText(l, x, y + i*lh));
+  // subtitle under the title, tracked to its width
+  const subN = [...SUBTITLE].length;
+  const subGap = Math.max(lh*0.45, H*0.014);
+  const sfs = Math.max(H*0.011, Math.min(bw / (subN*cw*1.45), H*0.021));
+  const sw = Math.max(bw, subN*cw*sfs*1.1);         // never squeeze letters together
+  const sx = x + (bw - sw)/2, step = (sw - cw*sfs) / (subN-1);
+  ctx.font = `${sfs}px ${family}`;
+  ctx.fillStyle = `rgb(${sInk},${sInk},${sInk})`;
+  [...SUBTITLE].forEach((c,i) => ctx.fillText(c, sx + i*step, y + bh + subGap));
+}
+
 function drawFooter(lum){
   const W = ovCanvas.width, H = ovCanvas.height;
   const family = 'Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
-  const dark = lum < 135;                          // dark ground → light text, and vice versa
-  const inkV  = dark ? 232 : 38;
+  const dark = lum < 135;                          // dark ground → light halo, and vice versa
+  const g = curBg & 0xff;
+  const inkV  = shade(g > 128 ? g - 80 : g + 90);  // same gray as the subtitle
   const haloV = dark ? 20  : 245;
   ovCtx.clearRect(0, 0, W, H);
+  if(titleFront) drawTitle(ovCtx);
   ovCtx.font = `100px ${family}`;
   const cw = ovCtx.measureText('█').width / 100;
-  const fw = W*0.80, fx = (W - fw)/2;              // footer ignores +/- sizing
-  const n = [...FOOTER].length;
-  const sfs = Math.min(fw / (n*cw*1.45), H*0.021);
-  const step = (fw - cw*sfs) / (n-1);
-  const y = H*(FOOTER_BAND.y0 + FOOTER_BAND.y1)/2 - sfs/2;
-  ovCtx.font = `${sfs}px ${family}`;
+  const fw = W*0.80;                               // footer ignores +/- sizing
+  const lines = FOOTER.map(l => ({ chars: [...l.text], size: l.size }));
+  const bandH = H*(FOOTER_BAND.y1 - FOOTER_BAND.y0);
+  const lineH = bandH / lines.length;
+  // one tracking for all lines: the longest full-size line fills the width;
+  // other lines keep the same letter spacing relative to their font size
+  const nMax = Math.max(...lines.filter(l => l.size === 1).map(l => l.chars.length));
+  let sfs = Math.min(fw / (nMax*cw*1.45), H*0.021, lineH*0.62);
+  const trackK = (fw - cw*sfs) / ((nMax-1)*sfs);       // letter step per px of font size
+  // shrink everything if a reduced-size line would still overflow the width
+  for(const l of lines){
+    const need = l.size*sfs*(cw + trackK*(l.chars.length-1));
+    if(need > fw) sfs *= fw/need;
+  }
   ovCtx.textBaseline = 'top';
   // soft halo in the opposite tone keeps it legible where it crosses pads or shadows
   ovCtx.shadowColor = `rgba(${haloV},${haloV},${haloV},0.85)`;
   ovCtx.shadowBlur = sfs*0.6;
   ovCtx.fillStyle = `rgb(${inkV},${inkV},${inkV})`;
-  [...FOOTER].forEach((c,i) => ovCtx.fillText(c, fx + i*step, y));
+  lines.forEach(({ chars, size }, li) => {
+    const fs = sfs*size, step = trackK*fs;
+    const lw = cw*fs + step*(chars.length-1);
+    const x0 = footerAlign === 'left'  ? (W - fw)/2
+             : footerAlign === 'right' ? (W + fw)/2 - lw
+             :                           (W - lw)/2;
+    const y = H*FOOTER_BAND.y0 + li*lineH + (lineH - fs)/2;
+    ovCtx.font = `${fs}px ${family}`;
+    ovCtx.shadowBlur = fs*0.6;
+    chars.forEach((c,i) => ovCtx.fillText(c, x0 + i*step, y));
+  });
   ovCtx.shadowBlur = 0; ovCtx.shadowColor = 'transparent';
   ovTex.needsUpdate = true;
 }
@@ -395,7 +366,8 @@ function pickTime(){
 }
 
 // ---- materials (shared, monochrome) -------------------------
-let padMat, spineMat, fruitMat, flowerMat, stamenMat;
+let padMat, spineMat, fruitMat, flowerMat, stamenMat, pinkMat;
+let fruitMeshes = [];   // every fruit of the current seed; one or two get the pink material
 let fruitGeo;  // lathe profile: barrel with a concave dimple at the top
 let dotGeo, dotMat;
 const FRUIT_SEG = 7;
@@ -574,6 +546,7 @@ function buildPad(gen, s, PL){
       fm.scale.set(fs, fs*1.5, fs);
       fm.castShadow = true;
       fg.add(fm);
+      fruitMeshes.push(fm);
       addFruitDots(fg, fs);
       // sit on the rim, base sunk slightly into the pad, axis along the rim normal
       const rot = rimNormalRot(phi, rx, ry);
@@ -699,6 +672,7 @@ function rebuild(){
   spineMat  = new THREE.LineBasicMaterial({ color:0x1c1c1a });
   const f   = Math.round(g*0.62);
   fruitMat  = new THREE.MeshStandardMaterial({ color:(f<<16)|(f<<8)|f, roughness:0.85, flatShading:true });
+  pinkMat   = new THREE.MeshStandardMaterial({ color:0xe9789e, roughness:0.85, flatShading:true });   // the only color in the poster
   flowerMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.7, flatShading:true, side:THREE.DoubleSide });
   stamenMat = new THREE.MeshStandardMaterial({ color:0x4a4a46, roughness:0.9 });
 
@@ -707,7 +681,7 @@ function rebuild(){
   dotGeo = new THREE.SphereGeometry(1, 5, 4);
   dotMat = new THREE.MeshStandardMaterial({ color:0x2a2a27, roughness:1 });
 
-  padCount = 0; fruitCount = 0; flowerCount = 0;
+  padCount = 0; fruitCount = 0; flowerCount = 0; fruitMeshes = [];
 
   // clump layout: main plant + smaller companions
   const slots = P.nPlants === 1 ? [0]
@@ -750,6 +724,12 @@ function rebuild(){
   letterStyle = fr < 0.40 ? { kind:'shadow', glyph:'' }
               : fr < 0.65 ? { kind:'solid',  glyph:'' }
               :             { kind:'pixel',  glyph:['#','@','▓','▒','█'][Ri(0,4)] };
+  // a dash of pink: one, two or three of the fruits, when the plant has any
+  if(fruitMeshes.length){
+    const nPink = Math.min(fruitMeshes.length, Ri(1, 3));
+    const pool = fruitMeshes.slice();
+    for(let k=0; k<nPink; k++) pool.splice(Ri(0, pool.length-1), 1)[0].material = pinkMat;
+  }
   plantBox = measurePlants();
   applyTime(TIMES[timeIdx]);
 
@@ -807,6 +787,21 @@ window.addEventListener('keydown', e => {
     applyTime(TIMES[timeIdx]);
     syncHash();
   }
+  if(e.key==='1'||e.key==='2'||e.key==='3'){
+    inkAdj = e.key==='2' ? 0 : Math.max(-10, Math.min(10, inkAdj + (e.key==='3' ? 1 : -1)));
+    applyTime(TIMES[timeIdx]);
+    syncHash();
+  }
+  if(e.key==='a'||e.key==='A'){
+    footerAlign = FOOTER_ALIGNS[(FOOTER_ALIGNS.indexOf(footerAlign) + 1) % FOOTER_ALIGNS.length];
+    footerDirty = true;
+    syncHash();
+  }
+  if(e.key==='b'||e.key==='B'){
+    titleFront = !titleFront;
+    applyTime(TIMES[timeIdx]);
+    syncHash();
+  }
   if(e.key==='t'||e.key==='T'){
     timeIdx = (timeIdx + 1) % TIMES.length;
     applyTime(TIMES[timeIdx]);
@@ -831,13 +826,16 @@ function fontName(f){ return f.kind === 'pixel' ? 'pixel-' + GLYPH_NAMES[f.glyph
 function fontFromName(n){ return FONT_STYLES.find(f => fontName(f) === n); }
 const deg = r => Math.round(r*180/Math.PI);
 
-// e.g. 48213_dusk_solid_x1.21_tx4.5_ty-12  (size/offset only when changed)
+// e.g. 48213_dusk_solid_x1.21_tx4.5_ty-12_back_ink-2_fleft  (size/offset/back/ink/footer align only when changed)
 function stateTag(){
   const parts = [SEED, TIMES[timeIdx].name, fontName(letterStyle)];
   if(Math.abs(textScale-1) > 1e-3) parts.push('x' + textScale.toFixed(2));
   const pc = v => Math.round(v*1000)/10;          // offset in % of frame, 0.1 precision
   if(pc(textOff.x)) parts.push('tx' + pc(textOff.x));
   if(pc(textOff.y)) parts.push('ty' + pc(textOff.y));
+  if(!titleFront) parts.push('back');
+  if(inkAdj) parts.push('ink' + inkAdj);
+  if(footerAlign !== 'center') parts.push('f' + footerAlign);
   return parts.join('_');
 }
 
@@ -848,11 +846,17 @@ function loadTag(tag){
   if(!isFinite(seed)) return false;
   SEED = seed; rebuild();
   textScale = 1;                       // absent suffix means default size
+  titleFront = true;
+  inkAdj = 0;
+  footerAlign = 'center';
   for(const p of parts.slice(1)){
     const ti = TIMES.findIndex(t => t.name === p);
     if(ti >= 0) { timeIdx = ti; continue; }
     const f = fontFromName(p);
     if(f) { letterStyle = f; continue; }
+    if(p === 'back')          { titleFront = false; continue; }
+    if(/^ink-?\d+$/.test(p))  { inkAdj = parseInt(p.slice(3),10); continue; }
+    if(p === 'fleft' || p === 'fright') { footerAlign = p.slice(1); continue; }
     if(/^x[\d.]+$/.test(p))   { textScale = parseFloat(p.slice(1)); continue; }
     if(/^ry-?\d+$/.test(p))   { pivot.rotation.y = parseInt(p.slice(2),10)*Math.PI/180; continue; }
     if(/^rx-?\d+$/.test(p))   { pivot.rotation.x = parseInt(p.slice(2),10)*Math.PI/180; continue; }
