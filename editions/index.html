@@ -6,6 +6,8 @@
   <title>Desert Syntax · Editions</title>
   <meta name="description" content="Desert Syntax Editions — one text, a different book per seed. 31 chapters written in Marfa, Texas, on October 24, 2026.">
   <meta name="robots" content="noindex">
+  <!-- the page lives at /editions/; Vercel also serves it at /editions (no slash), where relative paths would miss -->
+  <base href="/editions/">
   <!-- the book's own stylesheets and fonts (GENERATED copies of book/, see book/scripts/build.mjs --site) -->
   <link rel="stylesheet" href="styles/fonts.css">
   <link rel="stylesheet" href="styles/book.css">
@@ -175,7 +177,7 @@
   </section>
 
   <footer class="colophon">
-    <div class="cl">ae/ra studio · <a id="c-contract" target="_blank" rel="noopener">contract</a> · <a href="../">desert syntax</a></div>
+    <div class="cl">ae/ra studio · <a id="c-contract" target="_blank" rel="noopener">contract</a> · <a href="/">desert syntax</a></div>
   </footer>
 </main>
 
