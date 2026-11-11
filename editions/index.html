@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Desert Syntax · Editions</title>
+  <meta name="description" content="Desert Syntax Editions — one text, a different book per seed. 31 chapters written in Marfa, Texas, on October 24, 2026.">
+  <meta name="robots" content="noindex">
+  <!-- the book's own stylesheets and fonts (GENERATED copies of book/, see book/scripts/build.mjs --site) -->
+  <link rel="stylesheet" href="styles/fonts.css">
+  <link rel="stylesheet" href="styles/book.css">
+  <style>
+    /* The website's language (index.html): the poster's palette, Menlo, tracked small caps. */
+    html { font-size: clamp(16px, 1.2vw, 28px); }
+    :root {
+      --col: min(60vw, 72ch, 100vw - 2rem);
+      --bg: #f1f0ec; --ground: #e4e2dc; --title: #ababab; --muted: #a1a1a1;
+      --ink: #2a2a27; --rule: #cfcfcd; --pink: #e9789e; --shadow: rgba(0, 0, 0, 0.14);
+      --font: Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="day"]):not([data-theme="light"]) {
+        --bg: #2c2c2d; --ground: #3a3a3a; --title: #7c7c7c; --muted: #868686;
+        --ink: #d8d8d4; --rule: #4a4a46; --shadow: rgba(0, 0, 0, 0.6);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="night"], :root[data-theme="dark"] {
+      --bg: #2c2c2d; --ground: #3a3a3a; --title: #7c7c7c; --muted: #868686;
+      --ink: #d8d8d4; --rule: #4a4a46; --shadow: rgba(0, 0, 0, 0.6);
+      color-scheme: dark;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: var(--font); font-size: 1rem; color: var(--ink); background: var(--bg); padding: 0 1rem 4rem; -webkit-font-smoothing: antialiased; }
+    [hidden] { display: none !important; }
+    main { width: var(--col); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+    a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); }
+    a:hover, a:focus-visible { border-bottom-color: var(--ink); outline: none; }
+    :focus-visible { outline: 1px solid var(--pink); outline-offset: 2px; }
+
+    .masthead { margin: 5vh 0 0; display: flex; flex-direction: column; gap: 0.6rem; }
+    .masthead h1 { font-weight: 400; font-size: 1.4rem; letter-spacing: 0.3em; text-transform: uppercase; line-height: 1.2; }
+    .masthead h1 b { font-weight: 400; color: var(--pink); }
+    .tracked { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); line-height: 1.8; }
+    .body { line-height: 1.7; font-size: 0.85rem; }
+    .body + .body { margin-top: 0.8rem; }
+    h2 { font-weight: 400; font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+
+    /* ---- the mint card ---- */
+    .card { border: 1px solid var(--rule); padding: 1.4rem 1.4rem 1.2rem; display: flex; flex-direction: column; gap: 1.1rem; }
+    .nums { display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; font-variant-numeric: tabular-nums; }
+    .nums span { display: flex; flex-direction: column; gap: 0.25rem; }
+    .nums b { font-weight: 400; font-size: 1.5rem; line-height: 1.1; letter-spacing: 0.03em; }
+    .nums i { font-style: normal; font-size: 0.55rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+    .acts { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+    button.b { font: inherit; font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink); background: var(--ground); border: 1px solid var(--rule); padding: 0.65rem 1.2rem; cursor: pointer; }
+    button.b:hover, button.b:focus-visible { background: var(--ink); color: var(--bg); border-color: var(--ink); outline: none; }
+    button.b:disabled { opacity: 0.45; cursor: default; background: var(--ground); color: var(--ink); border-color: var(--rule); }
+    button.b.hot { border-color: var(--pink); }
+    .msg { font-size: 0.75rem; line-height: 1.7; color: var(--muted); min-height: 1.3em; overflow-wrap: anywhere; }
+    .msg.err { color: var(--pink); }
+    .result { display: grid; grid-template-columns: minmax(0, 11rem) 1fr; gap: 1.2rem; align-items: start; }
+    .result .cv { border: 1px solid var(--rule); background: var(--ground); cursor: pointer; }
+    .result .cv svg { display: block; width: 100%; height: auto; }
+    .result dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.75rem; line-height: 1.5; }
+    .result dt { color: var(--muted); font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; padding-top: 0.2em; }
+    .result dd { overflow-wrap: anywhere; }
+    .result .acts { grid-column: 1 / -1; }
+
+    /* ---- the previews and the minted editions: covers ---- */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 1rem; }
+    .cover { display: flex; flex-direction: column; gap: 0.45rem; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; }
+    .cover .im { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--rule); background: var(--ground); overflow: hidden; }
+    .cover .im svg { position: absolute; inset: 0; margin: auto; max-width: calc(100% - 0.8rem); max-height: calc(100% - 0.8rem); box-shadow: 0 1px 2px var(--shadow); }
+    .cover:hover .im, .cover:focus-visible .im { border-color: var(--ink); }
+    .cover:focus-visible { outline: none; }
+    .cover small { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+    .cover small b { font-weight: 400; color: var(--ink); }
+    .sec .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+    .sec .head h2 { margin: 0; }
+    .sec .head button { font: inherit; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); background: none; border: 0; border-bottom: 1px solid var(--rule); cursor: pointer; padding: 0 0 1px; }
+    .sec .head button:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+    .colophon { margin-top: 2rem; text-align: center; color: var(--muted); }
+    .colophon .cl { font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; line-height: 2; }
+
+    /* ---- the reader (the token's own reading view, over the page) ---- */
+    #reader { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: var(--tbl, #2c2c2d); color: var(--hud, #e2e1dd); font-family: 'DS Plex', var(--font); font-size: 11px; }
+    #stage { position: relative; flex: 1; min-height: 0; overflow: hidden; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    #stage[data-view=sheet] { overflow: auto; cursor: default; }
+    #bk { position: absolute; left: 0; top: 0; transform-origin: top left; }
+    #stage[data-view=sheet] #bk { position: relative; }
+    #bk .pg { box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.18); }
+    #stage[data-view=sheet] .pg { cursor: pointer; }
+    #hud { display: flex; align-items: center; justify-content: center; gap: 14px; height: 38px; flex: none; letter-spacing: .14em; text-transform: uppercase; user-select: none; }
+    #hud button { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 6px 8px; cursor: pointer; opacity: .75; }
+    #hud button:hover { opacity: 1; }
+    #hud #pos { opacity: .75; min-width: 12ch; text-align: center; }
+    #hud #all[aria-pressed=true] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+    #hud #close { position: absolute; right: 6px; }
+    #rtitle { position: absolute; left: 14px; top: 0; height: 38px; display: flex; align-items: center; opacity: .75; letter-spacing: .14em; text-transform: uppercase; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; z-index: 2; width: 2rem; height: 2rem; padding: 0.4rem; color: var(--muted); background: none; border: 0; cursor: pointer; }
+    .theme-toggle svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+    .theme-toggle:hover, .theme-toggle:focus-visible { color: var(--ink); }
+    .theme-toggle .sun, .theme-toggle[data-to="day"] .moon { display: none; }
+    .theme-toggle[data-to="day"] .sun { display: block; }
+    @media (max-width: 700px) {
+      :root { --col: calc(100vw - 2rem); }
+      .masthead { margin-top: 3.5rem; }
+      .result { grid-template-columns: 1fr; }
+      .result .cv { max-width: 11rem; }
+      #hud { gap: 8px; font-size: 10px; }
+      #rtitle { display: none; }
+    }
+  </style>
+  <script>
+    try { var t0 = localStorage.getItem("ds.theme"); if (t0 === "day" || t0 === "night") document.documentElement.dataset.theme = t0; } catch (e) {}
+  </script>
+</head>
+<body>
+
+<button type="button" class="theme-toggle" aria-label="Switch to night">
+  <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>
+</button>
+
+<main>
+  <header class="masthead">
+    <h1>Desert Syntax <b>·</b> Editions</h1>
+    <span class="tracked" id="netline">Test · Base Sepolia</span>
+  </header>
+
+  <section>
+    <p class="body">One text, a different book per seed. The 31 chapters written in Marfa, Texas, on October 24, 2026 are set again for every edition: the seed drawn at mint chooses the palette, the type, the format, the cover and the grammar of every page, and the book is assembled on chain from that seed alone.</p>
+    <p class="body">Each edition is an ERC-721 token whose image is its cover and whose live view is the book, readable page by page.</p>
+  </section>
+
+  <section class="card" id="mint">
+    <h2>Mint</h2>
+    <div class="nums">
+      <span><b id="n-minted">—</b><i>minted</i></span>
+      <span><b id="n-cap">—</b><i>of</i></span>
+      <span><b id="n-price">—</b><i>price</i></span>
+      <span><b id="n-state">—</b><i>sale</i></span>
+    </div>
+    <div class="acts">
+      <button type="button" class="b" id="connect">Connect wallet</button>
+      <button type="button" class="b hot" id="mintbtn" disabled>Mint one</button>
+      <span class="tracked" id="acct"></span>
+    </div>
+    <p class="msg" id="msg">Reading the contract…</p>
+    <div class="result" id="result" hidden>
+      <div class="cv" id="r-cover" title="Read this edition"></div>
+      <dl>
+        <dt>Edition</dt><dd id="r-id"></dd>
+        <dt>Seed</dt><dd id="r-seed"></dd>
+        <dt>Settings</dt><dd id="r-settings"></dd>
+        <dt>Token</dt><dd><a id="r-token" target="_blank" rel="noopener"></a></dd>
+        <dt>Transaction</dt><dd><a id="r-tx" target="_blank" rel="noopener"></a></dd>
+      </dl>
+      <div class="acts"><button type="button" class="b" id="r-read">Read this edition</button></div>
+    </div>
+  </section>
+
+  <section class="sec" id="previews">
+    <div class="head"><h2>Twelve possible editions</h2><button type="button" id="more">Twelve more</button></div>
+    <p class="body" style="margin-bottom:1rem">A preview from random seeds. Your edition's seed is drawn by the contract at mint. Choose one to read it.</p>
+    <div class="grid" id="pgrid"></div>
+  </section>
+
+  <section class="sec" id="minted" hidden>
+    <div class="head"><h2>Minted editions</h2><span class="tracked" id="mcount"></span></div>
+    <div class="grid" id="mgrid"></div>
+  </section>
+
+  <footer class="colophon">
+    <div class="cl">ae/ra studio · <a id="c-contract" target="_blank" rel="noopener">contract</a> · <a href="../">desert syntax</a></div>
+  </footer>
+</main>
+
+<div id="reader" hidden>
+  <div id="stage" data-view="read"><div id="bk"></div></div>
+  <div id="hud" style="position:relative">
+    <span id="rtitle"></span>
+    <button type="button" id="prev" aria-label="Previous page">&larr;</button><span id="pos"></span>
+    <button type="button" id="next" aria-label="Next page">&rarr;</button>
+    <button type="button" id="all" aria-pressed="false">All pages</button>
+    <button type="button" id="close" aria-label="Close the reader">Close &times;</button>
+  </div>
+</div>
+
+<!-- order matters: data, then the drawing modules, then the renderer -->
+<script src="src/book-data.js"></script>
+<script src="src/vignettes.js"></script>
+<script src="src/covers.js"></script>
+<script src="src/plant2d.js"></script>
+<script src="src/book-renderer.js"></script>
+<script>
+(function () {
+  // ---- configuration: Base Sepolia test deployment (switch to Base mainnet in one place) ----
+  var CONFIG = {
+    chainId: 84532, chainHex: '0x14a34', chainName: 'Base Sepolia',
+    token: '0x932E17a326b63CcdEe10DcDcf465544872fCB296',   // Desert Syntax Editions (ABX SeriesCode, max 100)
+    minter: '0xfb5C61274a3A7dA83CcDD88DdEC914438244E2c9',  // the shared ABX fixed-price minter
+    rpc: 'https://base-sepolia-rpc.publicnode.com',
+    explorer: 'https://sepolia.basescan.org',
+    currency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 }
+  };
+  // function selectors (keccak256 of the signature, first 4 bytes) and the Transfer topic
+  var SEL = {
+    purchase: '0x64044156',      // purchase(address token, address expectedPaymentToken, uint256 maxPrice) payable
+    sales: '0xc6b9f06a',         // sales(address) -> (bool configured, address paymentToken, uint256 price, uint256 allocation, uint256 sold)
+    tokenParam: '0x6bd39222',    // tokenParam(uint256 id, bytes32 key) -> (bytes32 value, bool isHash, bool isSet)
+    maxInvocations: '0x6cbdef61', totalSupply: '0x18160ddd', paused: '0x5c975abb',
+    primaryPayee: '0xd8b4f8ac', minter: '0x07546172'
+  };
+  var TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  var SEED_KEY = '0x' + '7365656400000000000000000000000000000000000000000000000000000000'; // "seed" as bytes32
+
+  var B = window.__BOOK, DS = window.DSBook, DC = window.DSCovers, DV = window.DesertVignettes;
+  var $ = function (s) { return document.querySelector(s); };
+
+  // ---- theme (same key as the main page) ----
+  var toggle = $('.theme-toggle');
+  function themeNow() { var t = document.documentElement.dataset.theme; if (t) return t; return matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day'; }
+  function paintToggle() { var to = themeNow() === 'night' ? 'day' : 'night'; toggle.dataset.to = to; toggle.setAttribute('aria-label', 'Switch to ' + to); }
+  toggle.onclick = function () { var to = themeNow() === 'night' ? 'day' : 'night'; document.documentElement.dataset.theme = to; try { localStorage.setItem('ds.theme', to); } catch (e) {} paintToggle(); };
+  paintToggle();
+
+  // ---- plain JSON-RPC and ABI helpers (no library) ----
+  function rpc(method, params) {
+    return fetch(CONFIG.rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params }) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j.error) throw new Error(j.error.message || 'rpc error'); return j.result; });
+  }
+  function call(to, data) { return rpc('eth_call', [{ to: to, data: data }, 'latest']); }
+  function pad(hex) { return hex.replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
+  function word(result, i) { return '0x' + result.slice(2 + 64 * i, 66 + 64 * i); }
+  function big(hex) { return BigInt(hex); }
+  function addr(hex) { return '0x' + hex.slice(-40); }
+  function short(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
+  function eth(wei) { if (wei === 0n) return 'free'; var s = (Number(wei) / 1e18).toString(); return s + ' ETH'; }
+
+  // ---- the sale, read live from chain ----
+  var sale = null;
+  function readSale() {
+    return Promise.all([
+      call(CONFIG.token, SEL.totalSupply), call(CONFIG.token, SEL.maxInvocations), call(CONFIG.token, SEL.paused),
+      call(CONFIG.token, SEL.minter), call(CONFIG.token, SEL.primaryPayee), call(CONFIG.minter, SEL.sales + pad(CONFIG.token))
+    ]).then(function (r) {
+      var s = { minted: big(r[0]), cap: big(r[1]), paused: big(r[2]) !== 0n, minter: addr(r[3]), payee: addr(r[4]),
+        configured: big(word(r[5], 0)) !== 0n, paymentToken: addr(word(r[5], 1)), price: big(word(r[5], 2)), allocation: big(word(r[5], 3)), sold: big(word(r[5], 4)) };
+      s.minterAssigned = s.minter.toLowerCase() === CONFIG.minter.toLowerCase();
+      s.hasPayee = /[^0]/.test(s.payee.slice(2));
+      s.left = s.cap - s.minted; if (s.allocation - s.sold < s.left) s.left = s.allocation - s.sold;
+      s.open = !s.paused && s.minterAssigned && s.configured && s.hasPayee && s.left > 0n && s.paymentToken === '0x0000000000000000000000000000000000000000';
+      sale = s; return s;
+    });
+  }
+  function why(s) {
+    if (!s.configured) return 'not configured yet';
+    if (!s.minterAssigned) return 'minter not assigned yet';
+    if (!s.hasPayee) return 'payee not set yet';
+    if (s.paused) return 'paused';
+    if (s.left <= 0n) return 'sold out';
+    if (s.paymentToken !== '0x0000000000000000000000000000000000000000') return 'priced in a token this page does not handle';
+    return 'open';
+  }
+  function paintSale(s) {
+    $('#n-minted').textContent = s.minted.toString(); $('#n-cap').textContent = s.cap.toString();
+    $('#n-price').textContent = s.configured ? eth(s.price) : '—'; $('#n-state').textContent = s.open ? 'open' : 'closed';
+    if (!s.open) say('The sale is ' + why(s) + '.'); else if (!account) say('Connect a wallet on ' + CONFIG.chainName + ' to mint. The seed, and so the book, is drawn by the contract.');
+    $('#mintbtn').disabled = !(s.open && account);
+  }
+  function say(t, err) { var m = $('#msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+
+  // ---- wallet (EIP-1193) ----
+  var account = null, eth_ = window.ethereum;
+  function connect() {
+    if (!eth_) { say('No wallet found in this browser. Install MetaMask, Coinbase Wallet or Rabby, then reload.', true); return; }
+    say('Waiting for the wallet…');
+    eth_.request({ method: 'eth_requestAccounts' }).then(function (acc) {
+      account = acc[0]; $('#acct').textContent = short(account); $('#connect').textContent = 'Connected';
+      return eth_.request({ method: 'eth_chainId' });
+    }).then(function (id) {
+      if (parseInt(id, 16) === CONFIG.chainId) return;
+      return eth_.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.chainHex }] }).catch(function (e) {
+        if (e && (e.code === 4902 || /unrecognized|not added|4902/i.test(e.message || ''))) {
+          return eth_.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CONFIG.chainHex, chainName: CONFIG.chainName, rpcUrls: [CONFIG.rpc], blockExplorerUrls: [CONFIG.explorer], nativeCurrency: CONFIG.currency }] });
+        }
+        throw e;
+      });
+    }).then(function () { if (sale) paintSale(sale); say(sale && sale.open ? 'Ready. Mint one: the wallet asks you to confirm one transaction on ' + CONFIG.chainName + '.' : 'Connected.'); })
+      .catch(function (e) { say('Wallet: ' + (e && e.message || e), true); });
+  }
+  if (eth_ && eth_.on) {
+    eth_.on('accountsChanged', function (acc) { account = acc[0] || null; $('#acct').textContent = account ? short(account) : ''; $('#connect').textContent = account ? 'Connected' : 'Connect wallet'; if (sale) paintSale(sale); });
+    eth_.on('chainChanged', function () { if (sale) paintSale(sale); });
+  }
+
+  // ---- mint: purchase(token, ETH, maxPrice) on the shared minter, value = price ----
+  function mint() {
+    if (!sale || !sale.open || !account) return;
+    var data = SEL.purchase + pad(CONFIG.token) + pad('0x0') + pad('0x' + sale.price.toString(16));
+    var tx = { from: account, to: CONFIG.minter, value: '0x' + sale.price.toString(16), data: data };
+    $('#mintbtn').disabled = true; say('Confirm the transaction in the wallet…');
+    eth_.request({ method: 'eth_chainId' }).then(function (id) {
+      if (parseInt(id, 16) !== CONFIG.chainId) throw new Error('the wallet is on another network; switch to ' + CONFIG.chainName);
+      return eth_.request({ method: 'eth_sendTransaction', params: [tx] });
+    }).then(function (hash) {
+      say('Sent. Waiting for the block… ' + hash);
+      return waitReceipt(hash).then(function (rc) { return afterMint(hash, rc); });
+    }).catch(function (e) { say('Mint: ' + (e && e.message || e), true); }).then(function () { readSale().then(paintSale); });
+  }
+  function waitReceipt(hash) {
+    return new Promise(function (res, rej) {
+      var n = 0; (function tick() {
+        rpc('eth_getTransactionReceipt', [hash]).then(function (rc) {
+          if (rc) return res(rc); if (++n > 90) return rej(new Error('no receipt after 3 minutes; look the transaction up on the explorer')); setTimeout(tick, 2000);
+        }).catch(function () { setTimeout(tick, 3000); });
+      })();
+    });
+  }
+  function afterMint(hash, rc) {
+    if (rc.status !== '0x1') throw new Error('the transaction reverted (' + hash + ')');
+    var log = (rc.logs || []).filter(function (l) { return l.address.toLowerCase() === CONFIG.token.toLowerCase() && l.topics[0] === TRANSFER; })[0];
+    if (!log) throw new Error('minted, but no Transfer event found in the receipt');
+    var id = big(log.topics[3]);
+    return seedOf(id).then(function (seed) { showResult(id, seed, hash); say('Minted edition #' + id + '. This is your book: its seed sets everything on the page.'); });
+  }
+  function seedOf(id) {
+    return call(CONFIG.token, SEL.tokenParam + pad('0x' + id.toString(16)) + pad(SEED_KEY)).then(function (r) {
+      if (big(word(r, 2)) === 0n) throw new Error('token #' + id + ' has no seed yet');
+      return word(r, 0);
+    });
+  }
+  function settings(ed) { return [ed.pal.n, ed.type.n, ed.fmt.n, ed.grammar.join(' + '), 'motif ' + ed.motif, (DC.COMPS[ed.comp].src || ed.comp).toLowerCase(), '“' + ed.word + '”'].join(' · '); }
+  function showResult(id, seed, hash) {
+    var ed = DS.edition(seed, B);
+    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id); };
+    $('#r-id').textContent = '#' + id + ' · ' + ed.id; $('#r-seed').textContent = seed; $('#r-settings').textContent = settings(ed);
+    var t = $('#r-token'); t.textContent = short(CONFIG.token) + ' #' + id; t.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + id;
+    var x = $('#r-tx'); x.textContent = short(hash); x.href = CONFIG.explorer + '/tx/' + hash;
+    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id); };
+    $('#result').hidden = false; $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ---- covers: previews from random seeds, and the minted editions from chain ----
+  function randomSeed() { var a = new Uint8Array(32); crypto.getRandomValues(a); return '0x' + Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, '0'); }).join(''); }
+  function coverButton(seed, label, title) {
+    var ed = DS.edition(seed, B), b = document.createElement('button'); b.type = 'button'; b.className = 'cover';
+    b.innerHTML = '<div class="im">' + DS.coverSVG(ed) + '</div><small><b>' + (label || ed.id) + '</b><br>' + ed.pal.n + ' · ' + ed.type.n + ' · ' + ed.fmt.n + '</small>';
+    b.onclick = function () { openReader(seed, title || label || 'edition ' + ed.id); };
+    return b;
+  }
+  function previews() { var g = $('#pgrid'); g.innerHTML = ''; for (var i = 0; i < 12; i++) g.appendChild(coverButton(randomSeed())); }
+  $('#more').onclick = previews; previews();
+  function mintedGallery(s) {
+    var n = Number(s.minted); if (!n) { $('#minted').hidden = true; return; }
+    var ids = []; for (var i = Math.max(0, n - 24); i < n; i++) ids.push(i);
+    Promise.all(ids.map(function (id) { return seedOf(BigInt(id)).then(function (seed) { return { id: id, seed: seed }; }, function () { return null; }); })).then(function (rows) {
+      var g = $('#mgrid'); g.innerHTML = '';
+      rows.filter(Boolean).reverse().forEach(function (r) {
+        var b = coverButton(r.seed, '#' + r.id, 'edition #' + r.id);
+        var a = document.createElement('a'); a.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + r.id; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'explorer'; a.style.cssText = 'font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;align-self:flex-start';
+        var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:.35rem'; w.appendChild(b); w.appendChild(a); g.appendChild(w);
+      });
+      $('#mcount').textContent = n + ' minted' + (n > 24 ? ' · last 24 shown' : ''); $('#minted').hidden = false;
+    });
+  }
+
+  // ---- the reader: the token's reading view, over the page ----
+  var reader = $('#reader'), stage = $('#stage'), bk = $('#bk');
+  var ed = null, idx = 0, view = 'read', pgs = [], vars = '', ready = false;
+  var FONTS = ["400 14px 'DS Bodoni'", "italic 400 14px 'DS Bodoni'", "400 14px 'DS Cabin'", "600 14px 'DS Cabin'", "400 14px 'DS Plex'"];
+  function loadFonts() { var F = document.fonts; return F && F.load ? Promise.all(FONTS.map(function (f) { return F.load(f).catch(function () {}); })) : Promise.resolve(); }
+  function two() { return view === 'read' && ed.fmt.n !== 'square' && stage.clientWidth >= ed.fmt.w * 1.25 && stage.clientWidth > stage.clientHeight; }
+  function spreadStart(i) { return i === 0 ? 0 : (i % 2 ? i : i - 1); }
+  function layout() {
+    if (!ready) return;
+    var W = stage.clientWidth, H = stage.clientHeight, PAD = 18, w = ed.fmt.w, h = ed.fmt.h;
+    if (view === 'read') {
+      var t = two(), n = t ? 2 : 1, start = t ? spreadStart(idx) : idx, show = t && start === 0 ? [pgs[0]] : pgs.slice(start, start + n);
+      pgs.forEach(function (p) { p.hidden = true; }); show.forEach(function (p) { p.hidden = false; });
+      var gap = 2, bw = show.length * w + (show.length - 1) * gap, s = Math.min((W - 2 * PAD) / bw, (H - 2 * PAD) / h);
+      bk.style.cssText = vars + ';display:flex;gap:' + gap + 'px;width:' + bw + 'px;height:' + h + 'px;transform:translate(' + Math.round((W - bw * s) / 2) + 'px,' + Math.round((H - h * s) / 2) + 'px) scale(' + s + ')';
+      var lab = function (p) { return p.dataset.page === 'cover' ? 'cover' : p.dataset.page === 'end' ? 'colophon' : p.dataset.page === 'drawing' ? 'drawing' : p.dataset.page; };
+      $('#pos').textContent = show.map(lab).join('–') + ' · ' + pgs.length + ' leaves';
+    } else {
+      pgs.forEach(function (p) { p.hidden = false; });
+      var gap2 = 12, cols = Math.max(2, Math.min(8, Math.floor((W - 2 * PAD) / (w * .36 + gap2)))), s2 = (W - 2 * PAD - (cols - 1) * gap2) / (cols * w), rows = Math.ceil(pgs.length / cols);
+      bk.style.cssText = vars + ';display:grid;grid-template-columns:repeat(' + cols + ',' + w + 'px);gap:' + (gap2 / s2) + 'px;width:' + (cols * w + (cols - 1) * gap2 / s2) + 'px;transform:translate(' + PAD + 'px,' + PAD + 'px) scale(' + s2 + ');margin-bottom:' + (rows * (h + gap2 / s2) * s2 + 2 * PAD - rows * (h + gap2 / s2)) + 'px';
+      $('#pos').textContent = pgs.length + ' leaves';
+    }
+    $('#all').setAttribute('aria-pressed', view === 'sheet'); $('#prev').hidden = $('#next').hidden = view !== 'read';
+  }
+  function go(i) { idx = Math.max(0, Math.min(pgs.length - 1, i)); if (view !== 'read') { view = 'read'; stage.dataset.view = view; } layout(); }
+  function step(d) { if (two()) { var s = spreadStart(idx); go(d > 0 ? (s === 0 ? 1 : s + 2) : (s <= 1 ? 0 : s - 2)); } else go(idx + d); }
+  function toggleView() { view = view === 'read' ? 'sheet' : 'read'; stage.dataset.view = view; if (view === 'sheet') stage.scrollTop = 0; layout(); }
+  function openReader(seed, title) {
+    ed = DS.edition(seed, B); ready = false; idx = 0; view = 'read'; stage.dataset.view = 'read'; bk.innerHTML = ''; pgs = [];
+    reader.style.setProperty('--tbl', 'color-mix(in srgb,' + ed.pal.bg + ' 58%,' + ed.pal.ink + ')'); reader.style.setProperty('--hud', ed.pal.bg);
+    $('#rtitle').textContent = title + ' · ' + ed.id; $('#pos').textContent = '…';
+    reader.hidden = false; document.body.style.overflow = 'hidden';
+    loadFonts().then(function () { DS.renderBook(bk, ed, B, DV); vars = bk.getAttribute('style') || ''; pgs = [].slice.call(bk.querySelectorAll('.pg')); ready = true; layout(); });
+  }
+  function closeReader() { reader.hidden = true; document.body.style.overflow = ''; bk.innerHTML = ''; pgs = []; ready = false; }
+  stage.addEventListener('click', function (ev) {
+    var a = ev.target.closest('a.xl'); if (a) { ev.preventDefault(); var i = pgs.findIndex(function (p) { return p.id === a.getAttribute('href').slice(1); }); if (i >= 0) go(i); return; }
+    if (view === 'sheet') { var pg = ev.target.closest('.pg'); if (pg) go(pgs.indexOf(pg)); return; }
+    step(ev.clientX < stage.getBoundingClientRect().left + stage.clientWidth / 2 ? -1 : 1);
+  });
+  var tx0 = null; stage.addEventListener('touchstart', function (e) { tx0 = e.changedTouches[0].clientX; }, { passive: true });
+  stage.addEventListener('touchend', function (e) { if (tx0 === null || view !== 'read') return; var dx = e.changedTouches[0].clientX - tx0; tx0 = null; if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1); }, { passive: true });
+  addEventListener('keydown', function (e) {
+    if (reader.hidden) return;
+    if (e.key === 'Escape') closeReader(); else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') step(1); else if (e.key === 'ArrowLeft' || e.key === 'PageUp') step(-1);
+    else if (e.key === 'Home') go(0); else if (e.key === 'End') go(pgs.length - 1); else if (e.key === 'a' || e.key === 'A') toggleView(); else return; e.preventDefault();
+  });
+  $('#prev').onclick = function () { step(-1); }; $('#next').onclick = function () { step(1); }; $('#all').onclick = toggleView; $('#close').onclick = closeReader;
+  addEventListener('resize', layout);
+
+  // ---- go ----
+  $('#connect').onclick = connect; $('#mintbtn').onclick = mint;
+  $('#c-contract').href = CONFIG.explorer + '/address/' + CONFIG.token; $('#c-contract').textContent = 'contract ' + short(CONFIG.token);
+  $('#netline').textContent = (CONFIG.chainId === 8453 ? 'Base' : 'Test · ' + CONFIG.chainName) + ' · ' + short(CONFIG.token);
+  readSale().then(function (s) { paintSale(s); mintedGallery(s); }).catch(function (e) { say('Could not read the contract: ' + e.message, true); });
+  setInterval(function () { readSale().then(paintSale).catch(function () {}); }, 20000);
+  window.__ED = { config: CONFIG, readSale: readSale, openReader: openReader, state: function () { return { sale: sale, account: account }; } };
+})();
+</script>
+</body>
+</html>
