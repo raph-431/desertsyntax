@@ -123,6 +123,18 @@
     #hud #pos { opacity: .75; min-width: 12ch; text-align: center; }
     #hud #all[aria-pressed=true] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
     #rtitle { opacity: .6; }
+    #hud #pdf { opacity: 1; border: 1px solid currentColor; padding: 6px 12px; margin-right: 8px; }
+    /* Download PDF: the browser's print engine, one book page per sheet (the @page size is set per edition by the script) */
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; height: auto !important; }
+      body > *:not(#reader) { display: none !important; }
+      #reader { position: static !important; display: block !important; background: none !important; height: auto !important; }
+      #hud { display: none !important; }
+      #stage { position: static !important; overflow: visible !important; height: auto !important; }
+      #bk { position: static !important; transform: none !important; display: block !important; width: auto !important; height: auto !important; margin: 0 !important; gap: 0 !important; }
+      #bk .pg { display: block !important; box-shadow: none !important; margin: 0 !important; break-after: page; page-break-after: always; }
+      #bk .pg:last-child { break-after: auto; page-break-after: auto; }
+    }
     .theme-toggle { position: fixed; top: 1rem; right: 1rem; z-index: 2; width: 2rem; height: 2rem; padding: 0.4rem; color: var(--muted); background: none; border: 0; cursor: pointer; }
     .theme-toggle svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
     .theme-toggle:hover, .theme-toggle:focus-visible { color: var(--ink); }
@@ -135,7 +147,7 @@
       .result .cv { max-width: 11rem; }
       #hud { font-size: 9px; padding: 0 6px; }
       #hud .hc { gap: 6px; }
-      #hud #back, #hud #mintthis { padding: 5px 7px; }
+      #hud #back, #hud #mintthis, #hud #pdf { padding: 5px 7px; }
       #rtitle, #hud #all { display: none; }
     }
   </style>
@@ -191,7 +203,7 @@
         <dt>Token</dt><dd><a id="r-token" target="_blank" rel="noopener"></a></dd>
         <dt>Transaction</dt><dd><a id="r-tx" target="_blank" rel="noopener"></a></dd>
       </dl>
-      <div class="acts"><button type="button" class="b" id="r-read">Read this edition</button></div>
+      <div class="acts"><button type="button" class="b" id="r-read">Read this edition</button><button type="button" class="b" id="r-pdf" title="Opens the reader and the print dialog: choose Save as PDF">Download PDF</button></div>
     </div>
   </section>
 
@@ -216,7 +228,7 @@
   <div id="hud">
     <div class="hl"><button type="button" id="back">&larr; Back to the editions</button><span id="rtitle"></span></div>
     <div class="hc"><button type="button" id="prev" aria-label="Previous page">&larr;</button><span id="pos"></span><button type="button" id="next" aria-label="Next page">&rarr;</button><button type="button" id="all" aria-pressed="false">All pages</button></div>
-    <div class="hr"><button type="button" id="mintthis" hidden>Choose this edition</button></div>
+    <div class="hr"><button type="button" id="pdf" hidden title="Opens the print dialog: choose Save as PDF">Download PDF</button><button type="button" id="mintthis" hidden>Choose this edition</button></div>
   </div>
 </div>
 
@@ -376,7 +388,7 @@
     return seedOf(id).then(function (onchain) {
       var same = onchain.toLowerCase() === seed.toLowerCase();
       showResult(id, onchain, hash, same);
-      var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"]'); if (cell) { cell.querySelector('.ac').innerHTML = '<span class="tracked" style="color:var(--pink)">yours · #' + id + '</span>'; cell.querySelector('.cvr').classList.remove('chosen'); cell.querySelector('.cvr').onclick = function () { openReader(onchain, 'edition #' + id, false); }; }
+      var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"]'); if (cell) { cell.querySelector('.ac').innerHTML = '<span class="tracked" style="color:var(--pink)">yours · #' + id + '</span>'; cell.querySelector('.cvr').classList.remove('chosen'); cell.querySelector('.cvr').onclick = function () { openReader(onchain, 'edition #' + id, false, true); }; }
       chosen = null; $('#p-cover').hidden = true; $('#p-label').textContent = 'Minted'; $('#p-text').textContent = 'Edition #' + id + ' is yours. Choose another to mint again.';
       say('Minted edition #' + id + (same ? ', with the seed you chose.' : '. The seed on chain differs from the one chosen: the contract drew its own.'), !same);
     });
@@ -390,11 +402,12 @@
   function settings(ed) { return [ed.pal.n, ed.type.n, ed.fmt.n, ed.grammar.join(' + '), 'motif ' + ed.motif, (DC.COMPS[ed.comp].src || ed.comp).toLowerCase(), '\u201c' + ed.word + '\u201d'].join(' \u00b7 '); }
   function showResult(id, seed, hash) {
     var ed = DS.edition(seed, B);
-    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id, false); };
+    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id, false, true); };
     $('#r-id').textContent = '#' + id + ' \u00b7 ' + ed.id; $('#r-seed').textContent = seed; $('#r-settings').textContent = settings(ed);
     var t = $('#r-token'); t.textContent = short(CONFIG.token) + ' #' + id; t.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + id;
     var x = $('#r-tx'); x.textContent = short(hash); x.href = CONFIG.explorer + '/tx/' + hash;
-    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false); };
+    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false, true); };
+    $('#r-pdf').onclick = function () { openReader(seed, 'edition #' + id, false, true); var w = setInterval(function () { if (ready) { clearInterval(w); printBook(); } }, 100); };
     $('#result').hidden = false; $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -421,7 +434,7 @@
     Promise.all(ids.map(function (id) { return seedOf(BigInt(id)).then(function (seed) { return { id: id, seed: seed }; }, function () { return null; }); })).then(function (rows) {
       var g = $('#mgrid'); g.innerHTML = '';
       rows.filter(Boolean).reverse().forEach(function (r) {
-        var b = coverButton(r.seed, '#' + r.id, function () { openReader(r.seed, 'edition #' + r.id, false); });
+        var b = coverButton(r.seed, '#' + r.id, function () { openReader(r.seed, 'edition #' + r.id, false, true); });
         var a = document.createElement('a'); a.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + r.id; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'explorer'; a.style.cssText = 'font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;align-self:flex-start';
         var w = document.createElement('div'); w.className = 'cell'; w.appendChild(b); w.appendChild(a); g.appendChild(w);
       });
@@ -457,9 +470,9 @@
   function go(i) { idx = Math.max(0, Math.min(pgs.length - 1, i)); if (view !== 'read') { view = 'read'; stage.dataset.view = view; } layout(); }
   function step(d) { if (two()) { var s = spreadStart(idx); go(d > 0 ? (s === 0 ? 1 : s + 2) : (s <= 1 ? 0 : s - 2)); } else go(idx + d); }
   function toggleView() { view = view === 'read' ? 'sheet' : 'read'; stage.dataset.view = view; if (view === 'sheet') stage.scrollTop = 0; layout(); }
-  var readerSeed = null;
-  function openReader(seed, title, choosable) {
-    readerSeed = seed; $('#mintthis').hidden = !choosable;
+  var readerSeed = null, readerTitle = '';
+  function openReader(seed, title, choosable, printable) {
+    readerSeed = seed; readerTitle = title; $('#mintthis').hidden = !choosable; $('#pdf').hidden = !printable;
     ed = DS.edition(seed, B); ready = false; idx = 0; view = 'read'; stage.dataset.view = 'read'; bk.innerHTML = ''; pgs = [];
     reader.style.setProperty('--tbl', 'color-mix(in srgb,' + ed.pal.bg + ' 58%,' + ed.pal.ink + ')'); reader.style.setProperty('--hud', ed.pal.bg);
     $('#rtitle').textContent = title + ' · ' + ed.id; $('#pos').textContent = '…';
@@ -481,6 +494,19 @@
   });
   $('#prev').onclick = function () { step(-1); }; $('#next').onclick = function () { step(1); }; $('#all').onclick = toggleView; $('#back').onclick = closeReader;
   $('#mintthis').onclick = function () { var sd = readerSeed; closeReader(); choose(sd); };
+  // PDF: every page shown, no transform (the print stylesheet), the sheet sized to the edition's page; the
+  // print dialog's "Save as PDF" writes the file, named after the title
+  var pageStyle = document.createElement('style'); document.head.appendChild(pageStyle);
+  var titleBefore = document.title;
+  function printBook() {
+    if (!ready) return;
+    pageStyle.textContent = '@page { size: ' + ed.fmt.w + 'px ' + ed.fmt.h + 'px; margin: 0; }';
+    pgs.forEach(function (p) { p.hidden = false; });
+    titleBefore = document.title; document.title = 'Desert Syntax \u00b7 ' + readerTitle.replace(/^edition /, 'Edition ');
+    setTimeout(function () { window.print(); }, 50);
+  }
+  addEventListener('afterprint', function () { document.title = titleBefore; if (!reader.hidden) layout(); });
+  $('#pdf').onclick = printBook;
   addEventListener('resize', layout);
 
   // ---- go ----
