@@ -69,16 +69,32 @@
     .result dt { color: var(--muted); font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; padding-top: 0.2em; }
     .result dd { overflow-wrap: anywhere; }
     .result .acts { grid-column: 1 / -1; }
+    .pick { display: grid; grid-template-columns: minmax(0, 7rem) 1fr; gap: 1.2rem; align-items: center; }
+    .pick .cv { border: 1px solid var(--pink); background: var(--ground); cursor: pointer; }
+    .pick .cv svg { display: block; width: 100%; height: auto; }
+    .pick .cv[hidden] + .pt { grid-column: 1 / -1; }
+    .pick .ptx { display: flex; flex-direction: column; gap: 0.4rem; }
+    .pick .ptx .body { font-size: 0.78rem; }
+    .pick .ptx a { font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; align-self: flex-start; cursor: pointer; }
 
     /* ---- the previews and the minted editions: covers ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 1rem; }
-    .cover { display: flex; flex-direction: column; gap: 0.45rem; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; }
-    .cover .im { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--rule); background: var(--ground); overflow: hidden; }
-    .cover .im svg { position: absolute; inset: 0; margin: auto; max-width: calc(100% - 0.8rem); max-height: calc(100% - 0.8rem); box-shadow: 0 1px 2px var(--shadow); }
-    .cover:hover .im, .cover:focus-visible .im { border-color: var(--ink); }
-    .cover:focus-visible { outline: none; }
-    .cover small { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
-    .cover small b { font-weight: 400; color: var(--ink); }
+    #pgrid { grid-template-columns: repeat(5, 1fr); }
+    @media (max-width: 700px) { #pgrid { grid-template-columns: repeat(2, 1fr); } }
+    .cvr { display: flex; flex-direction: column; gap: 0.45rem; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; }
+    .cvr .im { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--rule); background: var(--ground); overflow: hidden; }
+    .cvr .im svg { position: absolute; inset: 0; margin: auto; max-width: calc(100% - 0.8rem); max-height: calc(100% - 0.8rem); box-shadow: 0 1px 2px var(--shadow); }
+    .cvr:hover .im, .cvr:focus-visible .im { border-color: var(--ink); }
+    .cvr:focus-visible { outline: none; }
+    .cvr small { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+    .cvr small b { font-weight: 400; color: var(--ink); }
+    .cvr.chosen .im { border-color: var(--pink); box-shadow: 0 0 0 1px var(--pink); }
+    .cvr.chosen small b::after { content: " · chosen"; color: var(--pink); }
+    .cell { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cell .ac { display: flex; gap: 0.9rem; }
+    .cell .ac button { font: inherit; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); background: none; border: 0; border-bottom: 1px solid var(--rule); padding: 0 0 1px; cursor: pointer; }
+    .cell .ac button:hover, .cell .ac button:focus-visible { color: var(--ink); border-bottom-color: var(--ink); outline: none; }
+    .cell .ac button.pk { color: var(--pink); border-bottom-color: var(--pink); }
     .sec .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
     .sec .head h2 { margin: 0; }
     .sec .head button { font: inherit; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); background: none; border: 0; border-bottom: 1px solid var(--rule); cursor: pointer; padding: 0 0 1px; }
@@ -95,13 +111,18 @@
     #stage[data-view=sheet] #bk { position: relative; }
     #bk .pg { box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.18); }
     #stage[data-view=sheet] .pg { cursor: pointer; }
-    #hud { display: flex; align-items: center; justify-content: center; gap: 14px; height: 38px; flex: none; letter-spacing: .14em; text-transform: uppercase; user-select: none; }
+    #hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 44px; flex: none; padding: 0 10px; letter-spacing: .14em; text-transform: uppercase; user-select: none; }
+    #hud .hl { display: flex; align-items: center; gap: 14px; justify-self: start; }
+    #hud .hc { display: flex; align-items: center; gap: 14px; }
+    #hud .hr { justify-self: end; }
     #hud button { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; padding: 6px 8px; cursor: pointer; opacity: .75; }
     #hud button:hover { opacity: 1; }
+    #hud #back, #hud #mintthis { opacity: 1; border: 1px solid currentColor; padding: 6px 12px; }
+    #hud #mintthis { background: var(--hud); color: var(--tbl); border-color: var(--hud); }
+    #hud #mintthis:hover { background: var(--pink); border-color: var(--pink); color: #fff; }
     #hud #pos { opacity: .75; min-width: 12ch; text-align: center; }
     #hud #all[aria-pressed=true] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
-    #hud #close { position: absolute; right: 6px; }
-    #rtitle { position: absolute; left: 14px; top: 0; height: 38px; display: flex; align-items: center; opacity: .75; letter-spacing: .14em; text-transform: uppercase; }
+    #rtitle { opacity: .6; }
     .theme-toggle { position: fixed; top: 1rem; right: 1rem; z-index: 2; width: 2rem; height: 2rem; padding: 0.4rem; color: var(--muted); background: none; border: 0; cursor: pointer; }
     .theme-toggle svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
     .theme-toggle:hover, .theme-toggle:focus-visible { color: var(--ink); }
@@ -112,8 +133,10 @@
       .masthead { margin-top: 3.5rem; }
       .result { grid-template-columns: 1fr; }
       .result .cv { max-width: 11rem; }
-      #hud { gap: 8px; font-size: 10px; }
-      #rtitle { display: none; }
+      #hud { font-size: 9px; padding: 0 6px; }
+      #hud .hc { gap: 6px; }
+      #hud #back, #hud #mintthis { padding: 5px 7px; }
+      #rtitle, #hud #all { display: none; }
     }
   </style>
   <script>
@@ -143,12 +166,19 @@
     <div class="nums">
       <span><b id="n-minted">—</b><i>minted</i></span>
       <span><b id="n-cap">—</b><i>of</i></span>
-      <span><b id="n-price">—</b><i>price</i></span>
+      <span><b>free</b><i>price</i></span>
       <span><b id="n-state">—</b><i>sale</i></span>
+    </div>
+    <div class="pick" id="pick">
+      <div class="cv" id="p-cover" hidden title="Read this edition"></div>
+      <div class="ptx">
+        <span class="tracked" id="p-label">No edition chosen</span>
+        <p class="body" id="p-text">Choose one of the ten editions below. Its seed becomes your token's seed: the book you see is the book you mint.</p>
+      </div>
     </div>
     <div class="acts">
       <button type="button" class="b" id="connect">Connect wallet</button>
-      <button type="button" class="b hot" id="mintbtn" disabled>Mint one</button>
+      <button type="button" class="b hot" id="mintbtn" disabled>Mint the chosen edition</button>
       <span class="tracked" id="acct"></span>
     </div>
     <p class="msg" id="msg">Reading the contract…</p>
@@ -166,8 +196,8 @@
   </section>
 
   <section class="sec" id="previews">
-    <div class="head"><h2>Twelve possible editions</h2><button type="button" id="more">Twelve more</button></div>
-    <p class="body" style="margin-bottom:1rem">A preview from random seeds. Your edition's seed is drawn by the contract at mint. Choose one to read it.</p>
+    <div class="head"><h2>Ten possible editions</h2><button type="button" id="more">Ten more</button></div>
+    <p class="body" style="margin-bottom:1rem">Ten books from ten random seeds. Choose one to mint it, or read it first. Ten more draws ten new seeds and these ten are gone.</p>
     <div class="grid" id="pgrid"></div>
   </section>
 
@@ -183,12 +213,10 @@
 
 <div id="reader" hidden>
   <div id="stage" data-view="read"><div id="bk"></div></div>
-  <div id="hud" style="position:relative">
-    <span id="rtitle"></span>
-    <button type="button" id="prev" aria-label="Previous page">&larr;</button><span id="pos"></span>
-    <button type="button" id="next" aria-label="Next page">&rarr;</button>
-    <button type="button" id="all" aria-pressed="false">All pages</button>
-    <button type="button" id="close" aria-label="Close the reader">Close &times;</button>
+  <div id="hud">
+    <div class="hl"><button type="button" id="back">&larr; Back to the editions</button><span id="rtitle"></span></div>
+    <div class="hc"><button type="button" id="prev" aria-label="Previous page">&larr;</button><span id="pos"></span><button type="button" id="next" aria-label="Next page">&rarr;</button><button type="button" id="all" aria-pressed="false">All pages</button></div>
+    <div class="hr"><button type="button" id="mintthis" hidden>Choose this edition</button></div>
   </div>
 </div>
 
@@ -204,18 +232,17 @@
   var CONFIG = {
     chainId: 84532, chainHex: '0x14a34', chainName: 'Base Sepolia',
     token: '0x932E17a326b63CcdEe10DcDcf465544872fCB296',   // Desert Syntax Editions (ABX SeriesCode, max 100)
-    minter: '0xfb5C61274a3A7dA83CcDD88DdEC914438244E2c9',  // the shared ABX fixed-price minter
+    minter: '0x183E0f9946280892B8B0D90eDb0EFEe95774848e',  // EditionMinter (book/solidity/src/EditionMinter.sol): minter + seed source
     rpc: 'https://base-sepolia-rpc.publicnode.com',
     explorer: 'https://sepolia.basescan.org',
     currency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 }
   };
   // function selectors (keccak256 of the signature, first 4 bytes) and the Transfer topic
   var SEL = {
-    purchase: '0x64044156',      // purchase(address token, address expectedPaymentToken, uint256 maxPrice) payable
-    sales: '0xc6b9f06a',         // sales(address) -> (bool configured, address paymentToken, uint256 price, uint256 allocation, uint256 sold)
-    tokenParam: '0x6bd39222',    // tokenParam(uint256 id, bytes32 key) -> (bytes32 value, bool isHash, bool isSet)
-    maxInvocations: '0x6cbdef61', totalSupply: '0x18160ddd', paused: '0x5c975abb',
-    primaryPayee: '0xd8b4f8ac', minter: '0x07546172'
+    mint: '0xadf2cead',          // EditionMinter.mint(bytes32 seed) -> uint256 tokenId
+    sale: '0x6ad1fe02',          // EditionMinter.sale() -> (bool open, uint256 minted, uint256 cap, bool paused, bool isMinter, bool isSeedSource)
+    available: '0x6932854f',     // EditionMinter.available(bytes32 seed) -> bool
+    tokenParam: '0x6bd39222'     // token.tokenParam(uint256 id, bytes32 key) -> (bytes32 value, bool isHash, bool isSet)
   };
   var TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   var SEED_KEY = '0x' + '7365656400000000000000000000000000000000000000000000000000000000'; // "seed" as bytes32
@@ -239,42 +266,57 @@
   function pad(hex) { return hex.replace(/^0x/, '').toLowerCase().padStart(64, '0'); }
   function word(result, i) { return '0x' + result.slice(2 + 64 * i, 66 + 64 * i); }
   function big(hex) { return BigInt(hex); }
-  function addr(hex) { return '0x' + hex.slice(-40); }
   function short(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
-  function eth(wei) { if (wei === 0n) return 'free'; var s = (Number(wei) / 1e18).toString(); return s + ' ETH'; }
 
-  // ---- the sale, read live from chain ----
+  // ---- the sale, read live from the minter ----
   var sale = null;
   function readSale() {
-    return Promise.all([
-      call(CONFIG.token, SEL.totalSupply), call(CONFIG.token, SEL.maxInvocations), call(CONFIG.token, SEL.paused),
-      call(CONFIG.token, SEL.minter), call(CONFIG.token, SEL.primaryPayee), call(CONFIG.minter, SEL.sales + pad(CONFIG.token))
-    ]).then(function (r) {
-      var s = { minted: big(r[0]), cap: big(r[1]), paused: big(r[2]) !== 0n, minter: addr(r[3]), payee: addr(r[4]),
-        configured: big(word(r[5], 0)) !== 0n, paymentToken: addr(word(r[5], 1)), price: big(word(r[5], 2)), allocation: big(word(r[5], 3)), sold: big(word(r[5], 4)) };
-      s.minterAssigned = s.minter.toLowerCase() === CONFIG.minter.toLowerCase();
-      s.hasPayee = /[^0]/.test(s.payee.slice(2));
-      s.left = s.cap - s.minted; if (s.allocation - s.sold < s.left) s.left = s.allocation - s.sold;
-      s.open = !s.paused && s.minterAssigned && s.configured && s.hasPayee && s.left > 0n && s.paymentToken === '0x0000000000000000000000000000000000000000';
-      sale = s; return s;
+    if (/^0x0{40}$/.test(CONFIG.minter)) return Promise.reject(new Error('the minter is not deployed yet'));
+    return call(CONFIG.minter, SEL.sale).then(function (r) {
+      if (!r || r.length < 2 + 64 * 6) throw new Error('no minter at ' + CONFIG.minter);
+      var s = { open: big(word(r, 0)) !== 0n, minted: big(word(r, 1)), cap: big(word(r, 2)), paused: big(word(r, 3)) !== 0n, isMinter: big(word(r, 4)) !== 0n, isSeedSource: big(word(r, 5)) !== 0n };
+      s.left = s.cap - s.minted; sale = s; return s;
     });
   }
   function why(s) {
-    if (!s.configured) return 'not configured yet';
-    if (!s.minterAssigned) return 'minter not assigned yet';
-    if (!s.hasPayee) return 'payee not set yet';
+    if (!s.isMinter) return 'not open yet (minter not assigned)';
+    if (!s.isSeedSource) return 'not open yet (seed source not assigned)';
     if (s.paused) return 'paused';
     if (s.left <= 0n) return 'sold out';
-    if (s.paymentToken !== '0x0000000000000000000000000000000000000000') return 'priced in a token this page does not handle';
     return 'open';
   }
   function paintSale(s) {
     $('#n-minted').textContent = s.minted.toString(); $('#n-cap').textContent = s.cap.toString();
-    $('#n-price').textContent = s.configured ? eth(s.price) : '—'; $('#n-state').textContent = s.open ? 'open' : 'closed';
-    if (!s.open) say('The sale is ' + why(s) + '.'); else if (!account) say('Connect a wallet on ' + CONFIG.chainName + ' to mint. The seed, and so the book, is drawn by the contract.');
-    $('#mintbtn').disabled = !(s.open && account);
+    $('#n-state').textContent = s.open ? 'open' : 'closed';
+    if (!s.open) say('The sale is ' + why(s) + '.');
+    else if (!account) say('Connect a wallet on ' + CONFIG.chainName + ' to mint.');
+    else if (!chosen) say('Choose an edition below.');
+    else say('Ready. Mint: the wallet asks you to confirm one transaction on ' + CONFIG.chainName + '.');
+    $('#mintbtn').disabled = !(s.open && account && chosen);
   }
   function say(t, err) { var m = $('#msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+
+  // ---- the chosen edition ----
+  var chosen = null;
+  function choose(seed) {
+    chosen = seed;
+    document.querySelectorAll('#pgrid .cvr').forEach(function (c) { c.classList.toggle('chosen', c.dataset.seed === seed); });
+    document.querySelectorAll('#pgrid .ac .pk').forEach(function (b) { b.classList.remove('pk'); });
+    var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"] .ac button:last-child'); if (cell) cell.classList.add('pk');
+    var ed = DS.edition(seed, B);
+    $('#p-cover').innerHTML = DS.coverSVG(ed); $('#p-cover').hidden = false; $('#p-cover').onclick = function () { openReader(seed, 'edition ' + ed.id, true); };
+    $('#p-label').textContent = 'Chosen · edition ' + ed.id;
+    $('#p-text').innerHTML = ''; $('#p-text').appendChild(document.createTextNode(settings(ed) + '. '));
+    var a = document.createElement('a'); a.textContent = 'read it'; a.onclick = function () { openReader(seed, 'edition ' + ed.id, true); }; $('#p-text').appendChild(a);
+    if (sale) paintSale(sale);
+    $('#mint').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function unchoose() {
+    chosen = null; $('#p-cover').hidden = true; $('#p-label').textContent = 'No edition chosen';
+    $('#p-text').textContent = 'Choose one of the ten editions below. Its seed becomes your token\'s seed: the book you see is the book you mint.';
+    document.querySelectorAll('#pgrid .cvr.chosen').forEach(function (c) { c.classList.remove('chosen'); });
+    if (sale) paintSale(sale);
+  }
 
   // ---- wallet (EIP-1193) ----
   var account = null, eth_ = window.ethereum;
@@ -292,7 +334,7 @@
         }
         throw e;
       });
-    }).then(function () { if (sale) paintSale(sale); say(sale && sale.open ? 'Ready. Mint one: the wallet asks you to confirm one transaction on ' + CONFIG.chainName + '.' : 'Connected.'); })
+    }).then(function () { if (sale) paintSale(sale); else say('Connected.'); })
       .catch(function (e) { say('Wallet: ' + (e && e.message || e), true); });
   }
   if (eth_ && eth_.on) {
@@ -300,19 +342,22 @@
     eth_.on('chainChanged', function () { if (sale) paintSale(sale); });
   }
 
-  // ---- mint: purchase(token, ETH, maxPrice) on the shared minter, value = price ----
+  // ---- mint: EditionMinter.mint(seed), free; the contract hands that seed to the token ----
   function mint() {
-    if (!sale || !sale.open || !account) return;
-    var data = SEL.purchase + pad(CONFIG.token) + pad('0x0') + pad('0x' + sale.price.toString(16));
-    var tx = { from: account, to: CONFIG.minter, value: '0x' + sale.price.toString(16), data: data };
-    $('#mintbtn').disabled = true; say('Confirm the transaction in the wallet…');
-    eth_.request({ method: 'eth_chainId' }).then(function (id) {
+    if (!sale || !sale.open || !account || !chosen) return;
+    var seed = chosen;
+    $('#mintbtn').disabled = true; say('Checking the seed is still free…');
+    call(CONFIG.minter, SEL.available + pad(seed)).then(function (r) {
+      if (big(r) === 0n) throw new Error('that edition was minted by someone else a moment ago; choose another');
+      return eth_.request({ method: 'eth_chainId' });
+    }).then(function (id) {
       if (parseInt(id, 16) !== CONFIG.chainId) throw new Error('the wallet is on another network; switch to ' + CONFIG.chainName);
-      return eth_.request({ method: 'eth_sendTransaction', params: [tx] });
+      say('Confirm the transaction in the wallet…');
+      return eth_.request({ method: 'eth_sendTransaction', params: [{ from: account, to: CONFIG.minter, value: '0x0', data: SEL.mint + pad(seed) }] });
     }).then(function (hash) {
       say('Sent. Waiting for the block… ' + hash);
-      return waitReceipt(hash).then(function (rc) { return afterMint(hash, rc); });
-    }).catch(function (e) { say('Mint: ' + (e && e.message || e), true); }).then(function () { readSale().then(paintSale); });
+      return waitReceipt(hash).then(function (rc) { return afterMint(hash, rc, seed); });
+    }).catch(function (e) { say('Mint: ' + (e && e.message || e), true); }).then(function () { readSale().then(function (s) { paintSale(s); mintedGallery(s); }); });
   }
   function waitReceipt(hash) {
     return new Promise(function (res, rej) {
@@ -323,12 +368,18 @@
       })();
     });
   }
-  function afterMint(hash, rc) {
+  function afterMint(hash, rc, seed) {
     if (rc.status !== '0x1') throw new Error('the transaction reverted (' + hash + ')');
     var log = (rc.logs || []).filter(function (l) { return l.address.toLowerCase() === CONFIG.token.toLowerCase() && l.topics[0] === TRANSFER; })[0];
     if (!log) throw new Error('minted, but no Transfer event found in the receipt');
     var id = big(log.topics[3]);
-    return seedOf(id).then(function (seed) { showResult(id, seed, hash); say('Minted edition #' + id + '. This is your book: its seed sets everything on the page.'); });
+    return seedOf(id).then(function (onchain) {
+      var same = onchain.toLowerCase() === seed.toLowerCase();
+      showResult(id, onchain, hash, same);
+      var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"]'); if (cell) { cell.querySelector('.ac').innerHTML = '<span class="tracked" style="color:var(--pink)">yours · #' + id + '</span>'; cell.querySelector('.cvr').classList.remove('chosen'); cell.querySelector('.cvr').onclick = function () { openReader(onchain, 'edition #' + id, false); }; }
+      chosen = null; $('#p-cover').hidden = true; $('#p-label').textContent = 'Minted'; $('#p-text').textContent = 'Edition #' + id + ' is yours. Choose another to mint again.';
+      say('Minted edition #' + id + (same ? ', with the seed you chose.' : '. The seed on chain differs from the one chosen: the contract drew its own.'), !same);
+    });
   }
   function seedOf(id) {
     return call(CONFIG.token, SEL.tokenParam + pad('0x' + id.toString(16)) + pad(SEED_KEY)).then(function (r) {
@@ -336,26 +387,33 @@
       return word(r, 0);
     });
   }
-  function settings(ed) { return [ed.pal.n, ed.type.n, ed.fmt.n, ed.grammar.join(' + '), 'motif ' + ed.motif, (DC.COMPS[ed.comp].src || ed.comp).toLowerCase(), '“' + ed.word + '”'].join(' · '); }
+  function settings(ed) { return [ed.pal.n, ed.type.n, ed.fmt.n, ed.grammar.join(' + '), 'motif ' + ed.motif, (DC.COMPS[ed.comp].src || ed.comp).toLowerCase(), '\u201c' + ed.word + '\u201d'].join(' \u00b7 '); }
   function showResult(id, seed, hash) {
     var ed = DS.edition(seed, B);
-    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id); };
-    $('#r-id').textContent = '#' + id + ' · ' + ed.id; $('#r-seed').textContent = seed; $('#r-settings').textContent = settings(ed);
+    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id, false); };
+    $('#r-id').textContent = '#' + id + ' \u00b7 ' + ed.id; $('#r-seed').textContent = seed; $('#r-settings').textContent = settings(ed);
     var t = $('#r-token'); t.textContent = short(CONFIG.token) + ' #' + id; t.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + id;
     var x = $('#r-tx'); x.textContent = short(hash); x.href = CONFIG.explorer + '/tx/' + hash;
-    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id); };
+    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false); };
     $('#result').hidden = false; $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // ---- covers: previews from random seeds, and the minted editions from chain ----
+  // ---- covers: previews from random seeds (choose or read), and the minted editions from chain ----
   function randomSeed() { var a = new Uint8Array(32); crypto.getRandomValues(a); return '0x' + Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, '0'); }).join(''); }
-  function coverButton(seed, label, title) {
-    var ed = DS.edition(seed, B), b = document.createElement('button'); b.type = 'button'; b.className = 'cover';
-    b.innerHTML = '<div class="im">' + DS.coverSVG(ed) + '</div><small><b>' + (label || ed.id) + '</b><br>' + ed.pal.n + ' · ' + ed.type.n + ' · ' + ed.fmt.n + '</small>';
-    b.onclick = function () { openReader(seed, title || label || 'edition ' + ed.id); };
-    return b;
+  function coverButton(seed, label, onclick) {
+    var ed = DS.edition(seed, B), b = document.createElement('button'); b.type = 'button'; b.className = 'cvr'; b.dataset.seed = seed;
+    b.innerHTML = '<div class="im">' + DS.coverSVG(ed) + '</div><small><b>' + (label || 'edition ' + ed.id) + '</b><br>' + ed.pal.n + ' \u00b7 ' + ed.type.n + ' \u00b7 ' + ed.fmt.n + '</small>';
+    b.onclick = onclick; return b;
   }
-  function previews() { var g = $('#pgrid'); g.innerHTML = ''; for (var i = 0; i < 12; i++) g.appendChild(coverButton(randomSeed())); }
+  function previewCell(seed) {
+    var ed = DS.edition(seed, B), cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.seed = seed;
+    cell.appendChild(coverButton(seed, 'edition ' + ed.id, function () { choose(seed); }));
+    var ac = document.createElement('div'); ac.className = 'ac';
+    var rd = document.createElement('button'); rd.type = 'button'; rd.textContent = 'Read'; rd.onclick = function () { openReader(seed, 'edition ' + ed.id, true); };
+    var ch = document.createElement('button'); ch.type = 'button'; ch.textContent = 'Choose'; ch.onclick = function () { choose(seed); };
+    ac.appendChild(rd); ac.appendChild(ch); cell.appendChild(ac); return cell;
+  }
+  function previews() { var g = $('#pgrid'); g.innerHTML = ''; for (var i = 0; i < 10; i++) g.appendChild(previewCell(randomSeed())); unchoose(); }
   $('#more').onclick = previews; previews();
   function mintedGallery(s) {
     var n = Number(s.minted); if (!n) { $('#minted').hidden = true; return; }
@@ -363,11 +421,11 @@
     Promise.all(ids.map(function (id) { return seedOf(BigInt(id)).then(function (seed) { return { id: id, seed: seed }; }, function () { return null; }); })).then(function (rows) {
       var g = $('#mgrid'); g.innerHTML = '';
       rows.filter(Boolean).reverse().forEach(function (r) {
-        var b = coverButton(r.seed, '#' + r.id, 'edition #' + r.id);
+        var b = coverButton(r.seed, '#' + r.id, function () { openReader(r.seed, 'edition #' + r.id, false); });
         var a = document.createElement('a'); a.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + r.id; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'explorer'; a.style.cssText = 'font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;align-self:flex-start';
-        var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:.35rem'; w.appendChild(b); w.appendChild(a); g.appendChild(w);
+        var w = document.createElement('div'); w.className = 'cell'; w.appendChild(b); w.appendChild(a); g.appendChild(w);
       });
-      $('#mcount').textContent = n + ' minted' + (n > 24 ? ' · last 24 shown' : ''); $('#minted').hidden = false;
+      $('#mcount').textContent = n + ' minted' + (n > 24 ? ' \u00b7 last 24 shown' : ''); $('#minted').hidden = false;
     });
   }
 
@@ -399,7 +457,9 @@
   function go(i) { idx = Math.max(0, Math.min(pgs.length - 1, i)); if (view !== 'read') { view = 'read'; stage.dataset.view = view; } layout(); }
   function step(d) { if (two()) { var s = spreadStart(idx); go(d > 0 ? (s === 0 ? 1 : s + 2) : (s <= 1 ? 0 : s - 2)); } else go(idx + d); }
   function toggleView() { view = view === 'read' ? 'sheet' : 'read'; stage.dataset.view = view; if (view === 'sheet') stage.scrollTop = 0; layout(); }
-  function openReader(seed, title) {
+  var readerSeed = null;
+  function openReader(seed, title, choosable) {
+    readerSeed = seed; $('#mintthis').hidden = !choosable;
     ed = DS.edition(seed, B); ready = false; idx = 0; view = 'read'; stage.dataset.view = 'read'; bk.innerHTML = ''; pgs = [];
     reader.style.setProperty('--tbl', 'color-mix(in srgb,' + ed.pal.bg + ' 58%,' + ed.pal.ink + ')'); reader.style.setProperty('--hud', ed.pal.bg);
     $('#rtitle').textContent = title + ' · ' + ed.id; $('#pos').textContent = '…';
@@ -419,7 +479,8 @@
     if (e.key === 'Escape') closeReader(); else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') step(1); else if (e.key === 'ArrowLeft' || e.key === 'PageUp') step(-1);
     else if (e.key === 'Home') go(0); else if (e.key === 'End') go(pgs.length - 1); else if (e.key === 'a' || e.key === 'A') toggleView(); else return; e.preventDefault();
   });
-  $('#prev').onclick = function () { step(-1); }; $('#next').onclick = function () { step(1); }; $('#all').onclick = toggleView; $('#close').onclick = closeReader;
+  $('#prev').onclick = function () { step(-1); }; $('#next').onclick = function () { step(1); }; $('#all').onclick = toggleView; $('#back').onclick = closeReader;
+  $('#mintthis').onclick = function () { var sd = readerSeed; closeReader(); choose(sd); };
   addEventListener('resize', layout);
 
   // ---- go ----
@@ -428,7 +489,7 @@
   $('#netline').textContent = (CONFIG.chainId === 8453 ? 'Base' : 'Test · ' + CONFIG.chainName) + ' · ' + short(CONFIG.token);
   readSale().then(function (s) { paintSale(s); mintedGallery(s); }).catch(function (e) { say('Could not read the contract: ' + e.message, true); });
   setInterval(function () { readSale().then(paintSale).catch(function () {}); }, 20000);
-  window.__ED = { config: CONFIG, readSale: readSale, openReader: openReader, state: function () { return { sale: sale, account: account }; } };
+  window.__ED = { config: CONFIG, readSale: readSale, openReader: openReader, choose: choose, state: function () { return { sale: sale, account: account, chosen: chosen }; } };
 })();
 </script>
 </body>
