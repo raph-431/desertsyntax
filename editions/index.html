@@ -72,7 +72,7 @@
     .pick { display: grid; grid-template-columns: minmax(0, 7rem) 1fr; gap: 1.2rem; align-items: center; }
     .pick .cv { border: 1px solid var(--pink); background: var(--ground); cursor: pointer; }
     .pick .cv svg { display: block; width: 100%; height: auto; }
-    .pick .cv[hidden] + .pt { grid-column: 1 / -1; }
+    .pick .cv[hidden] + .ptx { grid-column: 1 / -1; }
     .pick .ptx { display: flex; flex-direction: column; gap: 0.4rem; }
     .pick .ptx .body { font-size: 0.78rem; }
     .pick .ptx a { font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; align-self: flex-start; cursor: pointer; }
@@ -388,26 +388,26 @@
     return seedOf(id).then(function (onchain) {
       var same = onchain.toLowerCase() === seed.toLowerCase();
       showResult(id, onchain, hash, same);
-      var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"]'); if (cell) { cell.querySelector('.ac').innerHTML = '<span class="tracked" style="color:var(--pink)">yours · #' + id + '</span>'; cell.querySelector('.cvr').classList.remove('chosen'); cell.querySelector('.cvr').onclick = function () { openReader(onchain, 'edition #' + id, false, true); }; }
+      var cell = document.querySelector('#pgrid .cell[data-seed="' + seed + '"]'); if (cell) { cell.querySelector('.ac').innerHTML = '<span class="tracked" style="color:var(--pink)">yours · #' + id + '</span>'; cell.querySelector('.cvr').classList.remove('chosen'); cell.querySelector('.cvr').onclick = function () { openReader(onchain, 'edition #' + id, false, true, id); }; }
       chosen = null; $('#p-cover').hidden = true; $('#p-label').textContent = 'Minted'; $('#p-text').textContent = 'Edition #' + id + ' is yours. Choose another to mint again.';
       say('Minted edition #' + id + (same ? ', with the seed you chose.' : '. The seed on chain differs from the one chosen: the contract drew its own.'), !same);
     });
   }
   function seedOf(id) {
     return call(CONFIG.token, SEL.tokenParam + pad('0x' + id.toString(16)) + pad(SEED_KEY)).then(function (r) {
-      if (big(word(r, 2)) === 0n) throw new Error('token #' + id + ' has no seed yet');
+      if (big(word(r, 2)) === 0n) throw new Error('token #' + id + ' is not minted yet');
       return word(r, 0);
     });
   }
   function settings(ed) { return [ed.pal.n, ed.type.n, ed.fmt.n, ed.grammar.join(' + '), 'motif ' + ed.motif, (DC.COMPS[ed.comp].src || ed.comp).toLowerCase(), '\u201c' + ed.word + '\u201d'].join(' \u00b7 '); }
   function showResult(id, seed, hash) {
     var ed = DS.edition(seed, B);
-    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id, false, true); };
+    $('#r-cover').innerHTML = DS.coverSVG(ed); $('#r-cover').onclick = function () { openReader(seed, 'edition #' + id, false, true, id); };
     $('#r-id').textContent = '#' + id + ' \u00b7 ' + ed.id; $('#r-seed').textContent = seed; $('#r-settings').textContent = settings(ed);
     var t = $('#r-token'); t.textContent = short(CONFIG.token) + ' #' + id; t.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + id;
     var x = $('#r-tx'); x.textContent = short(hash); x.href = CONFIG.explorer + '/tx/' + hash;
-    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false, true); };
-    $('#r-pdf').onclick = function () { openReader(seed, 'edition #' + id, false, true); var w = setInterval(function () { if (ready) { clearInterval(w); printBook(); } }, 100); };
+    $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false, true, id); };
+    $('#r-pdf').onclick = function () { openReader(seed, 'edition #' + id, false, true, id); var w = setInterval(function () { if (ready) { clearInterval(w); printBook(); } }, 100); };
     $('#result').hidden = false; $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -434,7 +434,7 @@
     Promise.all(ids.map(function (id) { return seedOf(BigInt(id)).then(function (seed) { return { id: id, seed: seed }; }, function () { return null; }); })).then(function (rows) {
       var g = $('#mgrid'); g.innerHTML = '';
       rows.filter(Boolean).reverse().forEach(function (r) {
-        var b = coverButton(r.seed, '#' + r.id, function () { openReader(r.seed, 'edition #' + r.id, false, true); });
+        var b = coverButton(r.seed, '#' + r.id, function () { openReader(r.seed, 'edition #' + r.id, false, true, r.id); });
         var a = document.createElement('a'); a.href = CONFIG.explorer + '/nft/' + CONFIG.token + '/' + r.id; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'explorer'; a.style.cssText = 'font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;align-self:flex-start';
         var w = document.createElement('div'); w.className = 'cell'; w.appendChild(b); w.appendChild(a); g.appendChild(w);
       });
@@ -471,15 +471,16 @@
   function step(d) { if (two()) { var s = spreadStart(idx); go(d > 0 ? (s === 0 ? 1 : s + 2) : (s <= 1 ? 0 : s - 2)); } else go(idx + d); }
   function toggleView() { view = view === 'read' ? 'sheet' : 'read'; stage.dataset.view = view; if (view === 'sheet') stage.scrollTop = 0; layout(); }
   var readerSeed = null, readerTitle = '';
-  function openReader(seed, title, choosable, printable) {
+  function openReader(seed, title, choosable, printable, tokenId) {
     readerSeed = seed; readerTitle = title; $('#mintthis').hidden = !choosable; $('#pdf').hidden = !printable;
+    try { history.replaceState(null, '', tokenId === undefined ? location.pathname : location.pathname + '?token=' + tokenId); } catch (e) {}
     ed = DS.edition(seed, B); ready = false; idx = 0; view = 'read'; stage.dataset.view = 'read'; bk.innerHTML = ''; pgs = [];
     reader.style.setProperty('--tbl', 'color-mix(in srgb,' + ed.pal.bg + ' 58%,' + ed.pal.ink + ')'); reader.style.setProperty('--hud', ed.pal.bg);
-    $('#rtitle').textContent = title + ' · ' + ed.id; $('#pos').textContent = '…';
+    $('#rtitle').textContent = title + ' · ' + ed.id + (tokenId === undefined ? '' : ' · ' + location.host + location.pathname + '?token=' + tokenId); $('#pos').textContent = '…';
     reader.hidden = false; document.body.style.overflow = 'hidden';
     loadFonts().then(function () { DS.renderBook(bk, ed, B, DV); vars = bk.getAttribute('style') || ''; pgs = [].slice.call(bk.querySelectorAll('.pg')); ready = true; layout(); });
   }
-  function closeReader() { reader.hidden = true; document.body.style.overflow = ''; bk.innerHTML = ''; pgs = []; ready = false; }
+  function closeReader() { reader.hidden = true; document.body.style.overflow = ''; bk.innerHTML = ''; pgs = []; ready = false; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   stage.addEventListener('click', function (ev) {
     var a = ev.target.closest('a.xl'); if (a) { ev.preventDefault(); var i = pgs.findIndex(function (p) { return p.id === a.getAttribute('href').slice(1); }); if (i >= 0) go(i); return; }
     if (view === 'sheet') { var pg = ev.target.closest('.pg'); if (pg) go(pgs.indexOf(pg)); return; }
@@ -514,6 +515,13 @@
   $('#c-contract').href = CONFIG.explorer + '/address/' + CONFIG.token; $('#c-contract').textContent = 'contract ' + short(CONFIG.token);
   $('#netline').textContent = (CONFIG.chainId === 8453 ? 'Base' : 'Test · ' + CONFIG.chainName) + ' · ' + short(CONFIG.token);
   readSale().then(function (s) { paintSale(s); mintedGallery(s); }).catch(function (e) { say('Could not read the contract: ' + e.message, true); });
+  // deep link: /editions/?token=N opens edition N's reader (the seed is read from the contract)
+  (function () {
+    var q = /[?&]token=(\d+)/.exec(location.search); if (!q) return;
+    var id = BigInt(q[1]);
+    seedOf(id).then(function (seed) { openReader(seed, 'edition #' + id, false, true, id); })
+      .catch(function (e) { say('Edition #' + id + ': ' + e.message, true); try { history.replaceState(null, '', location.pathname); } catch (x) {} });
+  })();
   setInterval(function () { readSale().then(paintSale).catch(function () {}); }, 20000);
   window.__ED = { config: CONFIG, readSale: readSale, openReader: openReader, choose: choose, state: function () { return { sale: sale, account: account, chosen: chosen }; } };
 })();
