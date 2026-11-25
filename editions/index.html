@@ -39,6 +39,7 @@
     main { width: var(--col); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
     a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); }
     a:hover, a:focus-visible { border-bottom-color: var(--ink); outline: none; }
+    #bk a, #bk a:hover, #bk a:focus-visible { border-bottom: 0; } /* the book draws its own link underline (book.css); the site's link rule would add a second line */
     :focus-visible { outline: 1px solid var(--pink); outline-offset: 2px; }
 
     .masthead { margin: 5vh 0 0; display: flex; flex-direction: column; gap: 0.6rem; }
@@ -203,7 +204,7 @@
         <dt>Token</dt><dd><a id="r-token" target="_blank" rel="noopener"></a></dd>
         <dt>Transaction</dt><dd><a id="r-tx" target="_blank" rel="noopener"></a></dd>
       </dl>
-      <div class="acts"><button type="button" class="b" id="r-read">Read this edition</button><button type="button" class="b" id="r-pdf" title="Opens the reader and the print dialog: choose Save as PDF">Download PDF</button></div>
+      <div class="acts"><button type="button" class="b" id="r-read">Read this edition</button><button type="button" class="b" id="r-pdf" title="Opens the reader and the print dialog: choose Save as PDF">Download PDF</button><button type="button" class="b" id="r-print" title="A pocket paperback of this edition, printed on demand">Order a printed copy</button></div>
     </div>
   </section>
 
@@ -228,7 +229,7 @@
   <div id="hud">
     <div class="hl"><button type="button" id="back">&larr; Back to the editions</button><span id="rtitle"></span></div>
     <div class="hc"><button type="button" id="prev" aria-label="Previous page">&larr;</button><span id="pos"></span><button type="button" id="next" aria-label="Next page">&rarr;</button><button type="button" id="all" aria-pressed="false">All pages</button></div>
-    <div class="hr"><button type="button" id="pdf" hidden title="Opens the print dialog: choose Save as PDF">Download PDF</button><button type="button" id="mintthis" hidden>Choose this edition</button></div>
+    <div class="hr"><button type="button" id="pdf" hidden title="Opens the print dialog: choose Save as PDF">Download PDF</button><button type="button" id="printorder" hidden title="A pocket paperback of this edition, printed on demand">Order a printed copy</button><button type="button" id="mintthis" hidden>Choose this edition</button></div>
   </div>
 </div>
 
@@ -408,6 +409,7 @@
     var x = $('#r-tx'); x.textContent = short(hash); x.href = CONFIG.explorer + '/tx/' + hash;
     $('#r-read').onclick = function () { openReader(seed, 'edition #' + id, false, true, id); };
     $('#r-pdf').onclick = function () { openReader(seed, 'edition #' + id, false, true, id); var w = setInterval(function () { if (ready) { clearInterval(w); printBook(); } }, 100); };
+    $('#r-print').onclick = function () { location.href = '/print/?token=' + id; };
     $('#result').hidden = false; $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -473,6 +475,7 @@
   var readerSeed = null, readerTitle = '';
   function openReader(seed, title, choosable, printable, tokenId) {
     readerSeed = seed; readerTitle = title; $('#mintthis').hidden = !choosable; $('#pdf').hidden = !printable;
+    $('#printorder').hidden = false; $('#printorder').onclick = function () { location.href = '/print/?' + (tokenId === undefined ? 'seed=' + seed : 'token=' + tokenId); };
     try { history.replaceState(null, '', tokenId === undefined ? location.pathname : location.pathname + '?token=' + tokenId); } catch (e) {}
     ed = DS.edition(seed, B); ready = false; idx = 0; view = 'read'; stage.dataset.view = 'read'; bk.innerHTML = ''; pgs = [];
     reader.style.setProperty('--tbl', 'color-mix(in srgb,' + ed.pal.bg + ' 58%,' + ed.pal.ink + ')'); reader.style.setProperty('--hud', ed.pal.bg);

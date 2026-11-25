@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Desert Syntax · Order a printed copy</title>
+  <meta name="robots" content="noindex">
+  <style>
+    /* the website's language: the poster's palette, Menlo, tracked small caps (as editions/index.html) */
+    html { font-size: clamp(16px, 1.1vw, 24px); }
+    :root { --bg:#f1f0ec; --ground:#e4e2dc; --muted:#8f8f8b; --ink:#2a2a27; --rule:#cfcfcd; --pink:#e9789e;
+      --font: Menlo, Monaco, Consolas, "DejaVu Sans Mono", "Courier New", monospace; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#2c2c2d; --ground:#3a3a3a; --muted:#8a8a86; --ink:#d8d8d4; --rule:#4a4a46; color-scheme: dark; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: var(--font); font-size: .8rem; line-height: 1.6; color: var(--ink); background: var(--bg); padding: 2.5rem 1rem 4rem; }
+    [hidden] { display: none !important; }
+    main { width: min(46rem, 100%); margin: 0 auto; display: grid; gap: 2rem; }
+    a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); }
+    .tracked { font-size: .62rem; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+    h1 { font-size: 1.05rem; font-weight: 400; letter-spacing: .04em; }
+    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+    .grid { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 2rem; align-items: start; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .cover { max-width: 13rem; } }
+    .cover { aspect-ratio: 408 / 660; background: var(--ground); box-shadow: 0 10px 30px rgba(0,0,0,.14); overflow: hidden; }
+    .cover svg { width: 100%; height: 100%; display: block; }
+    fieldset { border: 0; display: grid; gap: .5rem; }
+    legend { margin-bottom: .45rem; }
+    label.opt { display: flex; gap: .6rem; align-items: baseline; padding: .55rem .7rem; border: 1px solid var(--rule); cursor: pointer; }
+    label.opt:has(input:checked) { border-color: var(--ink); }
+    label.opt .p { margin-left: auto; white-space: nowrap; }
+    input[type=radio] { accent-color: var(--pink); }
+    select, input[type=text] { font: inherit; color: inherit; background: transparent; border: 1px solid var(--rule); padding: .5rem .6rem; width: 100%; }
+    .row { display: flex; gap: .6rem; }
+    button { font: inherit; letter-spacing: .14em; text-transform: uppercase; font-size: .66rem; color: var(--bg); background: var(--ink); border: 0; padding: .8rem 1.1rem; cursor: pointer; }
+    button.ghost { color: var(--ink); background: transparent; border: 1px solid var(--rule); }
+    button:disabled { opacity: .4; cursor: default; }
+    .msg { min-height: 1.4em; }
+    .msg.err { color: #c2412d; }
+    .total { font-size: 1rem; }
+    .notes { color: var(--muted); font-size: .7rem; display: grid; gap: .4rem; border-top: 1px solid var(--rule); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="top"><span class="tracked"><a href="/">desert syntax</a> · <a href="/editions/">editions</a> · print</span></div>
+  <h1>Order a printed copy</h1>
+
+  <form id="pick" class="row" hidden>
+    <input type="text" id="tok" inputmode="numeric" placeholder="Edition number (#) or seed (0x…)" aria-label="Edition number or seed">
+    <button type="submit" class="ghost">Show</button>
+  </form>
+
+  <div class="grid" id="order" hidden>
+    <div><div class="cover" id="cover"></div><p class="tracked" id="edlabel" style="margin-top:.7rem"></p></div>
+    <div style="display:grid;gap:1.4rem">
+      <fieldset id="papers"><legend class="tracked">Paper</legend></fieldset>
+      <fieldset><legend class="tracked">Ship to</legend><select id="country"></select></fieldset>
+      <fieldset id="levels"><legend class="tracked">Shipping</legend></fieldset>
+      <div class="row" style="align-items:center;justify-content:space-between"><span class="total" id="total">…</span>
+        <button type="button" id="pay" disabled>Pay</button></div>
+      <p class="msg" id="msg"></p>
+      <p class="tracked" id="preview" hidden>Print PDF: <a id="pv-i" target="_blank">interior</a> · <a id="pv-c" target="_blank">cover</a></p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <p>Pocket paperback, 4.25 × 6.875 in, 44 to 60 pages, matte cover, printed on demand by Lulu. Any edition can be printed, whether it is minted or not, and whoever holds it: the book is set from the edition’s seed.</p>
+    <p>Payment by card on Stripe. Printing takes 3–5 business days, then shipping.</p>
+  </div>
+</main>
+
+<script src="/editions/src/book-data.js"></script>
+<script src="/editions/src/covers.js"></script>
+<script src="/editions/src/book-renderer.js"></script>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var q = new URLSearchParams(location.search), seed = q.get('seed'), tokenId = q.get('token'), data = null, variant = 'cream', level = null;
+  var money = function (c) { return '$' + (c / 100).toFixed(2); };
+  function say(t, err) { $('#msg').textContent = t || ''; $('#msg').className = 'msg' + (err ? ' err' : ''); }
+  var which = function () { return tokenId ? 'token=' + tokenId : 'seed=' + seed; };
+
+  if (!/^\d+$/.test(tokenId || '') && !/^0x[0-9a-fA-F]{64}$/.test(seed || '')) { tokenId = seed = null; $('#pick').hidden = false; }
+  $('#pick').onsubmit = function (e) { e.preventDefault(); var v = $('#tok').value.trim().replace(/^#/, '');
+    if (/^\d+$/.test(v)) location.search = '?token=' + v; else if (/^0x[0-9a-fA-F]{64}$/.test(v)) location.search = '?seed=' + v; else say('Enter an edition number or a 0x… seed.', true); };
+  if (tokenId || seed) load();
+
+  function load() {
+    $('#order').hidden = false; $('#total').textContent = 'Pricing…'; $('#pay').disabled = true; say('');
+    fetch('/api/print/quote?' + which() + '&variant=' + variant + '&country=' + ($('#country').value || 'US'))
+      .then(function (r) { return r.json(); }).then(function (j) {
+        if (j.error) throw new Error(j.error);
+        if (!data) firstPaint(j);
+        data = j; paintLevels();
+      }).catch(function (e) { $('#total').textContent = ''; say(e.message, true); });
+  }
+  function firstPaint(j) {
+    var ed = DSBook.edition(j.seed, window.__BOOK);
+    $('#cover').innerHTML = DSBook.coverSVG(ed);
+    var sv = $('#cover svg'); if (sv) sv.setAttribute('preserveAspectRatio', 'xMidYMid slice'); // the printed cover's proportions, as in lib/render.js
+    $('#edlabel').textContent = (j.tokenId != null ? 'Edition #' + j.tokenId + ' · ' : 'Edition ') + ed.id + ' · ' + ed.pal.n;
+    var ps = $('#papers'); Object.keys(j.variants).forEach(function (k) {
+      var l = document.createElement('label'); l.className = 'opt';
+      l.innerHTML = '<input type="radio" name="paper" value="' + k + '"' + (k === variant ? ' checked' : '') + '><span>' + j.variants[k] + '</span>';
+      l.querySelector('input').onchange = function () { variant = k; load(); }; ps.appendChild(l);
+    });
+    var c = $('#country'); Object.keys(j.countries).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = j.countries[k]; c.appendChild(o); });
+    c.value = j.country; c.onchange = load;
+  }
+  function paintLevels() {
+    var box = $('#levels'); box.querySelectorAll('label').forEach(function (l) { l.remove(); });
+    var keys = Object.keys(data.levels); if (keys.indexOf(level) < 0) level = keys[0];
+    keys.forEach(function (k) {
+      var L = data.levels[k], l = document.createElement('label'); l.className = 'opt';
+      l.innerHTML = '<input type="radio" name="level" value="' + k + '"' + (k === level ? ' checked' : '') + '><span>' + L.label + '</span><span class="p">' + money(L.totalCents) + '</span>';
+      l.querySelector('input').onchange = function () { level = k; paintTotal(); }; box.appendChild(l);
+    });
+    paintTotal();
+  }
+  // localhost only: the exact PDFs Lulu would get, without paying (api/print/preview.js)
+  function paintPreview() { if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return; var u = '/api/print/preview?seed=' + data.seed + '&variant=' + variant + '&part=';
+    $('#pv-i').href = u + 'interior'; $('#pv-c').href = u + 'cover'; $('#preview').hidden = false; }
+  function paintTotal() { paintPreview(); var L = data.levels[level]; $('#total').textContent = money(L.totalCents) + ' total'; $('#pay').disabled = false; }
+
+  $('#pay').onclick = function () {
+    $('#pay').disabled = true; say('Preparing the payment…');
+    fetch('/api/print/checkout', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seed: tokenId ? null : seed, tokenId: tokenId, variant: variant, country: $('#country').value, level: level }) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j.error) throw new Error(j.error); location.href = j.url; })
+      .catch(function (e) { say((e && e.message) || String(e), true); $('#pay').disabled = false; });
+  };
+})();
+</script>
+</body>
+</html>

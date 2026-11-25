@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desert Syntax · Thank you</title>
+  <meta name="robots" content="noindex">
+  <style>
+    html { font-size: clamp(16px, 1.1vw, 24px); }
+    :root { --bg:#f1f0ec; --muted:#8f8f8b; --ink:#2a2a27; --rule:#cfcfcd; --pink:#e9789e; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#2c2c2d; --muted:#8a8a86; --ink:#d8d8d4; --rule:#4a4a46; color-scheme: dark; } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Menlo, Monaco, Consolas, monospace; font-size: .8rem; line-height: 1.6; color: var(--ink); background: var(--bg); padding: 2.5rem 1rem; }
+    main { width: min(40rem, 100%); margin: 0 auto; display: grid; gap: 1.6rem; }
+    a { color: inherit; border-bottom: 1px solid var(--rule); text-decoration: none; }
+    .tracked { font-size: .62rem; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+    h1 { font-size: 1.05rem; font-weight: 400; }
+    ol { list-style: none; display: grid; gap: .45rem; }
+    li { color: var(--muted); } li.done { color: var(--ink); } li.now { color: var(--pink); }
+    .wait { display: none; } li.now .wait { display: inline; animation: blink 1.6s ease-in-out infinite; }
+    @keyframes blink { 50% { opacity: .35; } }
+    @media (prefers-reduced-motion: reduce) { li.now .wait { animation: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <span class="tracked"><a href="/">desert syntax</a> · print</span>
+  <h1>Thank you. Your book is on its way to the printer.</h1>
+  <ol id="steps">
+    <li data-s="paid">Payment received</li>
+    <li data-s="rendering">Setting your edition for print <span class="wait">· about a minute</span></li>
+    <li data-s="placed">Sent to the printer (Lulu)</li>
+    <li data-s="shipped">Shipped</li>
+  </ol>
+  <p id="note" class="tracked"></p>
+  <p>You can close this page at any time: your order goes on without it. To check on it later, open this same link again.</p>
+  <p>Stripe has emailed your receipt. Printing takes 3–5 business days, then shipping; this page shows the tracking link once the book ships.</p>
+</main>
+<script>
+(function () {
+  var s = new URLSearchParams(location.search).get('s'), order = ['paid', 'rendering', 'rendered', 'placed', 'shipped'];
+  function tick() {
+    fetch('/api/print/status?s=' + encodeURIComponent(s)).then(function (r) { return r.json(); }).then(function (j) {
+      var at = order.indexOf(j.status === 'rendered' ? 'rendering' : j.status);
+      document.querySelectorAll('#steps li').forEach(function (li) { var i = order.indexOf(li.dataset.s); li.className = i < at || j.status === 'shipped' ? 'done' : i === at ? 'now' : ''; });
+      var n = document.getElementById('note');
+      n.textContent = j.status === 'failed' ? 'Your order is held for a moment; we are on it and will email you.' : (j.label || '');
+      if (j.tracking && j.tracking.length) n.innerHTML = 'Tracking: ' + j.tracking.map(function (u) { return '<a href="' + u + '" target="_blank" rel="noopener">' + u.replace(/^https?:\/\//, '').slice(0, 40) + '</a>'; }).join(' · ');
+      if (j.status !== 'shipped') setTimeout(tick, j.status === 'placed' ? 30000 : 4000);
+    }).catch(function () { setTimeout(tick, 8000); });
+  }
+  if (s) tick();
+})();
+</script>
+</body>
+</html>

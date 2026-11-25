@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "api/stripe-webhook.js": {
+      "maxDuration": 300,
+      "memory": 2048,
+      "includeFiles": "editions/{src,styles,fonts}/**"
+    },
+    "api/print/retry.js": {
+      "maxDuration": 300,
+      "memory": 2048,
+      "includeFiles": "editions/{src,styles,fonts}/**"
+    },
+    "api/print/preview.js": {
+      "maxDuration": 120,
+      "memory": 2048,
+      "includeFiles": "editions/{src,styles,fonts}/**"
+    }
+  }
+}
